@@ -627,6 +627,9 @@
                                                Text="Soil 版维护：AtmoOmen"
                                                FontSize="15" Margin="0,0,0,8" />
                                     <TextBlock Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
+                                               Text="Violet 版维护：MilkVio"
+                                               FontSize="15" Margin="0,0,0,8" />
+                                    <TextBlock Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
                                                Text="特别鸣谢：Mino、sky、LeonBlade、Wintermute、Zyian、Roy、Meli、Aida Enna、Aireil、kizer 与 the angry paissa artist"
                                                TextWrapping="Wrap" Opacity="0.7" FontSize="13" Margin="0,0,0,28" />
 

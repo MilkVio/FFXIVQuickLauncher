@@ -1,12 +1,12 @@
 <div align="center">
-  <h1>XIVLauncherCN (Soil)</h1>
-  <img src="src/XIVLauncher/Resources/logo.png" alt="XIVLauncherCN (Soil) Logo" width="180" />
+  <h1>XIVLauncherCN (Violet)</h1>
+  <img src="src/XIVLauncher/Resources/pink_logo.png" alt="XIVLauncherCN (Violet) Logo" width="180" />
 
 
   <p>
-    <a href="https://github.com/AtmoOmen/FFXIVQuickLauncher/actions"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/AtmoOmen/FFXIVQuickLauncher/ci-workflow.yml?branch=CN&label=%E6%9E%84%E5%BB%BA&style=for-the-badge" /></a>
-    <a href="https://github.com/AtmoOmen/FFXIVQuickLauncher/releases/latest"><img alt="Latest Release" src="https://img.shields.io/github/v/release/AtmoOmen/FFXIVQuickLauncher?display_name=release&label=%E6%9C%80%E6%96%B0%E7%89%88%E6%9C%AC&style=for-the-badge" /></a>
-    <a href="https://github.com/AtmoOmen/FFXIVQuickLauncher/releases"><img alt="Downloads" src="https://img.shields.io/github/downloads/AtmoOmen/FFXIVQuickLauncher/total?label=%E7%B4%AF%E8%AE%A1%E4%B8%8B%E8%BD%BD&style=for-the-badge" /></a>
+    <a href="https://github.com/MilkVio/FFXIVQuickLauncher/actions"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/MilkVio/FFXIVQuickLauncher/ci-workflow.yml?branch=Violet&label=%E6%9E%84%E5%BB%BA&style=for-the-badge" /></a>
+    <a href="https://github.com/MilkVio/FFXIVQuickLauncher/releases/latest"><img alt="Latest Release" src="https://img.shields.io/github/v/release/MilkVio/FFXIVQuickLauncher?display_name=release&label=%E6%9C%80%E6%96%B0%E7%89%88%E6%9C%AC&style=for-the-badge" /></a>
+    <a href="https://github.com/MilkVio/FFXIVQuickLauncher/releases"><img alt="Downloads" src="https://img.shields.io/github/downloads/MilkVio/FFXIVQuickLauncher/total?label=%E7%B4%AF%E8%AE%A1%E4%B8%8B%E8%BD%BD&style=for-the-badge" /></a>
     <a href="https://discord.gg/dailyroutines"><img alt="Discord" src="https://img.shields.io/badge/Discord-5865F2?logo=discord&logoColor=white&style=for-the-badge" /></a>
   </p>
 
