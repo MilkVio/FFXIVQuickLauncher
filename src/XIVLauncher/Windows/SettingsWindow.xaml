@@ -415,7 +415,8 @@
                             <StackPanel>
                                 <ListView x:Name="CompanionAppListView"
                                           ScrollViewer.VerticalScrollBarVisibility="Disabled"
-                                          ItemsSource="{Binding CompanionAppEntries}" MouseUp="CompanionAppListView_OnMouseUp"
+                                          ItemsSource="{Binding CompanionAppEntries}"
+                                          MouseUp="CompanionAppListView_OnMouseUp"
                                           PreviewMouseRightButtonDown="CompanionAppListView_OnPreviewMouseRightButtonDown"
                                           SelectedItem="{Binding SelectedCompanionAppEntry}" Margin="0,0,0,16">
                                     <ListView.ContextMenu>
@@ -440,7 +441,8 @@
                                                     IsChecked="{Binding IsEnabled}" />
                                                 <TextBlock Margin="16,0,0,0"
                                                            Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
-                                                           Text="{Binding CompanionApp.Name}" VerticalAlignment="Center"
+                                                           Text="{Binding CompanionApp.Name}"
+                                                           VerticalAlignment="Center"
                                                            FontSize="14" />
                                             </StackPanel>
                                         </DataTemplate>
