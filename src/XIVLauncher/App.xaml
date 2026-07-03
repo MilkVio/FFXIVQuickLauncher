@@ -7,7 +7,7 @@
     <Application.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
-                <materialDesign:BundledTheme BaseTheme="Dark" PrimaryColor="Orange" SecondaryColor="Orange" />
+                <materialDesign:BundledTheme BaseTheme="Dark" PrimaryColor="Pink" SecondaryColor="Pink" />
 
                 <ResourceDictionary
                     Source="pack://application:,,,/MaterialDesignThemes.Wpf;component/Themes/MaterialDesign3.defaults.xaml" />
@@ -16,6 +16,20 @@
                 <ResourceDictionary Source="Xaml/Components/WindowAnimations.xaml" />
 
             </ResourceDictionary.MergedDictionaries>
+
+            <Color x:Key="MaterialDesign.Color.Primary">#FFF5C7DC</Color>
+            <Color x:Key="MaterialDesign.Color.Secondary">#FFF9DDEA</Color>
+            <Color x:Key="MaterialDesign.Color.Primary.Foreground">#FF25151D</Color>
+            <Color x:Key="MaterialDesign.Color.Secondary.Foreground">#FF25151D</Color>
+
+            <SolidColorBrush x:Key="MaterialDesign.Brush.Primary"
+                             Color="{StaticResource MaterialDesign.Color.Primary}" />
+            <SolidColorBrush x:Key="MaterialDesign.Brush.Secondary"
+                             Color="{StaticResource MaterialDesign.Color.Secondary}" />
+            <SolidColorBrush x:Key="MaterialDesign.Brush.Primary.Foreground"
+                             Color="{StaticResource MaterialDesign.Color.Primary.Foreground}" />
+            <SolidColorBrush x:Key="MaterialDesign.Brush.Secondary.Foreground"
+                             Color="{StaticResource MaterialDesign.Color.Secondary.Foreground}" />
         </ResourceDictionary>
     </Application.Resources>
 

@@ -1,4 +1,4 @@
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -42,7 +42,7 @@ public partial class SettingsWindow
             CustomMessageBox.Show
             (
                 $"保存设置失败：{ex.Message}",
-                "XIVLauncherCN (Soil)",
+                "XIVLauncherCN (Violet)",
                 MessageBoxButton.OK,
                 MessageBoxImage.Warning,
                 parentWindow: this

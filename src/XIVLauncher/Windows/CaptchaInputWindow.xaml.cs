@@ -1,4 +1,4 @@
-using System.IO;
+﻿using System.IO;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media.Imaging;
@@ -86,7 +86,7 @@ public partial class CaptchaInputWindow : Window
             CustomMessageBox.Show
             (
                 $"刷新验证码失败：{ex.Message}",
-                "XIVLauncherCN (Soil)",
+                "XIVLauncherCN (Violet)",
                 MessageBoxButton.OK,
                 MessageBoxImage.Warning,
                 parentWindow: this
@@ -129,7 +129,7 @@ public partial class CaptchaInputWindow : Window
             CustomMessageBox.Show
             (
                 $"刷新验证码失败：{ex.Message}",
-                "XIVLauncherCN (Soil)",
+                "XIVLauncherCN (Violet)",
                 MessageBoxButton.OK,
                 MessageBoxImage.Warning,
                 parentWindow: this

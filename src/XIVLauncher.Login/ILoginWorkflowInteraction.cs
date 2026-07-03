@@ -1,4 +1,5 @@
 using XIVLauncher.Account;
+using XIVLauncher.Account.DeviceProfiles;
 
 namespace XIVLauncher.Login;
 
@@ -10,9 +11,13 @@ public interface ILoginWorkflowInteraction
 
     void ShowLoginMessage(string message);
 
+    void ShowDeviceProfileDebug(LoginType loginType, DeviceProfileSnapshot deviceProfile);
+
     string? PromptTextInput(string text, string caption, string initialText);
 
     string? PromptCaptchaInput(LoginCaptchaChallenge challenge);
+
+    NewAccountDeviceProfileChoice PromptQrLoginDeviceProfileChoice();
 
     NewAccountDeviceProfileChoice PromptNewAccountDeviceProfileChoice();
 

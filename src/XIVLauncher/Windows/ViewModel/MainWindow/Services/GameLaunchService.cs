@@ -1,4 +1,4 @@
-using System.Collections.Concurrent;
+﻿using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.IO;
 using System.Windows;
@@ -103,7 +103,7 @@ public sealed class GameLaunchService
             CustomMessageBox.Show
             (
                 "无法解析游戏目录, 注入失败",
-                "XIVLauncherCN (Soil)",
+                "XIVLauncherCN (Violet)",
                 MessageBoxButton.OK,
                 MessageBoxImage.Error,
                 parentWindow: window
@@ -134,7 +134,7 @@ public sealed class GameLaunchService
             CustomMessageBox.Show
             (
                 "Dalamud 尚未准备完成, 注入失败",
-                "XIVLauncherCN (Soil)",
+                "XIVLauncherCN (Violet)",
                 MessageBoxButton.OK,
                 MessageBoxImage.Error
             );
@@ -160,7 +160,7 @@ public sealed class GameLaunchService
             CustomMessageBox.Show
             (
                 "Dalamud 需要安装 Microsoft Visual C++ 2015-2019 Redistributable, 请前往微软官网下载并安装",
-                "XIVLauncherCN (Soil)",
+                "XIVLauncherCN (Violet)",
                 MessageBoxButton.OK,
                 MessageBoxImage.Exclamation,
                 parentWindow: window
@@ -173,7 +173,7 @@ public sealed class GameLaunchService
             CustomMessageBox.Show
             (
                 "Dalamud 仅支持 64 位 Windows\n若本机为 ARM 架构, 请检查是否已为 XIVLauncher 启用 64 位模拟器",
-                "XIVLauncherCN (Soil)",
+                "XIVLauncherCN (Violet)",
                 MessageBoxButton.OK,
                 MessageBoxImage.Exclamation,
                 parentWindow: window

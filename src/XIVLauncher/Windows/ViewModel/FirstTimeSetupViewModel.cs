@@ -1,4 +1,4 @@
-using System.ComponentModel;
+﻿using System.ComponentModel;
 using System.IO;
 using System.Runtime.CompilerServices;
 using System.Windows;
@@ -54,14 +54,14 @@ internal sealed class FirstTimeSetupViewModel : INotifyPropertyChanged
             var desktop      = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
             var launcherPath = Paths.ResolveExecutablePath();
 
-            _shortcutService.CreateShortcut(desktop, "XIVLauncherCN (Soil)", launcherPath);
+            _shortcutService.CreateShortcut(desktop, "XIVLauncherCN (Violet)", launcherPath);
         }
         catch
         {
             _dialogService.ShowMessage
             (
                 "创建桌面快捷方式失败，如有需要请稍后手动创建。",
-                "XIVLauncherCN (Soil)",
+                "XIVLauncherCN (Violet)",
                 MessageBoxButton.OK,
                 MessageBoxImage.Exclamation
             );
@@ -131,7 +131,7 @@ internal sealed class FirstTimeSetupViewModel : INotifyPropertyChanged
             var result = _dialogService.ShowMessage
             (
                 "当前目录中没有检测到游戏安装，是否继续？你也可以稍后登录时再安装游戏。",
-                "XIVLauncherCN (Soil)",
+                "XIVLauncherCN (Violet)",
                 MessageBoxButton.YesNo
             );
 
@@ -144,7 +144,7 @@ internal sealed class FirstTimeSetupViewModel : INotifyPropertyChanged
             var result = _dialogService.ShowMessage
             (
                 "你选择的游戏目录位于 C 盘。XIVLauncherCN 可能无法正常登录，建议将游戏移动到其他磁盘，或以管理员身份运行启动器。是否继续？",
-                "XIVLauncherCN (Soil)",
+                "XIVLauncherCN (Violet)",
                 MessageBoxButton.YesNo,
                 MessageBoxImage.Warning
             );

@@ -1,4 +1,6 @@
+using Serilog;
 using XIVLauncher.Account;
+using XIVLauncher.Account.DeviceProfiles;
 using XIVLauncher.Common.Game;
 
 namespace XIVLauncher.Login;
@@ -10,11 +12,13 @@ internal sealed class NewAccountDeviceProfileCoordinator
 {
     public DeviceProfilePreparation? Prepare(LoginWorkflowRequest request, ResolvedLoginState resolvedLoginState)
     {
-        var requiresNewAccountDeviceProfileSetup   = request.RequireDeviceProfileSetupForNewLogin && resolvedLoginState.SavedAccount       == null;
-        var shouldRequestTemporaryQuickLoginSession = requiresNewAccountDeviceProfileSetup          && resolvedLoginState.RequestedLoginType == LoginType.QRCode;
-        var loginQuickLoginEnabled                 = resolvedLoginState.QuickLoginEnabled || shouldRequestTemporaryQuickLoginSession;
+        if (resolvedLoginState.RequestedLoginType == LoginType.QRCode)
+            return PrepareQrLogin(request, resolvedLoginState);
 
-        if (!requiresNewAccountDeviceProfileSetup || resolvedLoginState.RequestedLoginType == LoginType.QRCode)
+        var requiresNewAccountDeviceProfileSetup = request.RequireDeviceProfileSetupForNewLogin && resolvedLoginState.SavedAccount == null;
+        var loginQuickLoginEnabled               = resolvedLoginState.QuickLoginEnabled;
+
+        if (!requiresNewAccountDeviceProfileSetup)
         {
             var resolvedDeviceProfile = accountManager.ResolveDeviceProfile(resolvedLoginState.Username, resolvedLoginState.AccountType);
             return new DeviceProfilePreparation
@@ -22,7 +26,8 @@ internal sealed class NewAccountDeviceProfileCoordinator
                 resolvedDeviceProfile,
                 null,
                 requiresNewAccountDeviceProfileSetup,
-                loginQuickLoginEnabled
+                loginQuickLoginEnabled,
+                null
             );
         }
 
@@ -42,7 +47,8 @@ internal sealed class NewAccountDeviceProfileCoordinator
                     accountManager.ResolveDeviceProfile(pendingNewAccount),
                     pendingNewAccount,
                     true,
-                    loginQuickLoginEnabled
+                    loginQuickLoginEnabled,
+                    null
                 );
 
             case NewAccountDeviceProfileChoice.ConfigurePerAccount:
@@ -60,7 +66,8 @@ internal sealed class NewAccountDeviceProfileCoordinator
                     accountManager.ResolveDeviceProfile(configuredNewAccount),
                     configuredNewAccount,
                     true,
-                    loginQuickLoginEnabled
+                    loginQuickLoginEnabled,
+                    null
                 );
             }
 
@@ -71,38 +78,118 @@ internal sealed class NewAccountDeviceProfileCoordinator
 
     public PostQrDeviceProfileResult? ApplyAfterQrLogin(LoginWorkflowRequest request, DeviceProfilePreparation preparation, ResolvedLoginState resolvedLoginState, LoginResult loginResult)
     {
-        if (!preparation.RequiresNewAccountDeviceProfileSetup || resolvedLoginState.RequestedLoginType != LoginType.QRCode || loginResult.State != LoginState.Ok || loginResult.OAuthLogin == null)
-            return new PostQrDeviceProfileResult(loginResult, preparation.ResolvedDeviceProfile, preparation.PendingNewAccount);
+        if (resolvedLoginState.RequestedLoginType != LoginType.QRCode || loginResult.State != LoginState.Ok || loginResult.OAuthLogin == null)
+            return new PostQrDeviceProfileResult(loginResult, preparation.ResolvedDeviceProfile, preparation.PendingNewAccount, preparation.PendingQrDeviceProfile);
+
+        if (preparation.PendingQrDeviceProfile == null)
+            return new PostQrDeviceProfileResult(loginResult, preparation.ResolvedDeviceProfile, preparation.PendingNewAccount, null);
 
         var oAuthLogin = loginResult.OAuthLogin;
         var pendingNewAccount = preparation.PendingNewAccount
                                 ?? CreatePendingNewAccount(oAuthLogin.InputUserID, oAuthLogin.SndaID, resolvedLoginState.AccountType, resolvedLoginState.Area);
 
-        switch (request.Interaction.PromptNewAccountDeviceProfileChoice())
+        if (preparation.PendingQrDeviceProfile.UseShared)
+        {
+            pendingNewAccount.DeviceProfileDynamicEnabled = false;
+            Log.Information("[LoginWorkflow] 二维码登录扫码成功后保持共享设备画像, 账号={Account}", oAuthLogin.InputUserID);
+            return new PostQrDeviceProfileResult(loginResult, preparation.ResolvedDeviceProfile, pendingNewAccount, preparation.PendingQrDeviceProfile);
+        }
+
+        var configuredNewAccount = CreateIndependentDeviceProfileDraft(pendingNewAccount);
+        configuredNewAccount.DeviceProfileLastGeneratedUtcTicks = preparation.PendingQrDeviceProfile.GeneratedUtcTicks;
+
+        var resolvedDeviceProfile = new ResolvedDeviceProfile
+        (
+            preparation.PendingQrDeviceProfile.Snapshot,
+            null,
+            true,
+            configuredNewAccount.IsDeviceProfileRotation,
+            configuredNewAccount.DeviceProfileRotationDays,
+            preparation.PendingQrDeviceProfile.GeneratedUtcTicks
+        );
+
+        Log.Information
+        (
+            "[LoginWorkflow] 二维码登录扫码成功后准备绑定临时独立画像, 账号={Account}, DeviceIdPrefix={DeviceIdPrefix}",
+            oAuthLogin.InputUserID,
+            GetDeviceIdPrefix(preparation.PendingQrDeviceProfile.Snapshot)
+        );
+
+        return new PostQrDeviceProfileResult(loginResult, resolvedDeviceProfile, configuredNewAccount, preparation.PendingQrDeviceProfile);
+    }
+
+    private DeviceProfilePreparation? PrepareQrLogin(LoginWorkflowRequest request, ResolvedLoginState resolvedLoginState)
+    {
+        if (!request.RequireDeviceProfileSetupForNewLogin)
+        {
+            var resolvedDeviceProfile = accountManager.ResolveDeviceProfile(resolvedLoginState.Username, resolvedLoginState.AccountType);
+            return new DeviceProfilePreparation
+            (
+                resolvedDeviceProfile,
+                null,
+                false,
+                resolvedLoginState.QuickLoginEnabled,
+                null
+            );
+        }
+
+        switch (request.Interaction.PromptQrLoginDeviceProfileChoice())
         {
             case NewAccountDeviceProfileChoice.UseShared:
-                return new PostQrDeviceProfileResult(loginResult, accountManager.ResolveDeviceProfile(pendingNewAccount), pendingNewAccount);
-
-            case NewAccountDeviceProfileChoice.ConfigurePerAccount:
             {
-                var configuredNewAccount = CreateIndependentDeviceProfileDraft(pendingNewAccount);
+                var resolvedDeviceProfile = accountManager.ResolveDeviceProfile(null, resolvedLoginState.AccountType);
+                var pendingQrDeviceProfile = new PendingQrDeviceProfile
+                (
+                    resolvedDeviceProfile.Snapshot,
+                    true,
+                    resolvedDeviceProfile.LastGeneratedUtcTicks
+                );
 
-                if (!request.Interaction.ConfigureTemporaryAccountDeviceProfile(configuredNewAccount, accountManager))
-                {
-                    SavePendingNewAccountWithoutSecrets(pendingNewAccount);
-                    return null;
-                }
+                Log.Information("[LoginWorkflow] 二维码登录选择共享设备画像");
+                return new DeviceProfilePreparation
+                (
+                    resolvedDeviceProfile,
+                    null,
+                    true,
+                    true,
+                    pendingQrDeviceProfile
+                );
+            }
 
-                if (string.IsNullOrWhiteSpace(oAuthLogin.QuickLoginSecret))
-                {
-                    request.Interaction.ShowError("首次扫码登录未能获取可用于设备信息重登的会话密钥，本次无法继续启动游戏");
-                    return null;
-                }
+            case NewAccountDeviceProfileChoice.CreateIndependent:
+            {
+                var generatedUtcTicks = DateTimeOffset.UtcNow.UtcTicks;
+                var snapshot          = FakeMachineInfo.CreateSnapshot();
+                var resolvedDeviceProfile = new ResolvedDeviceProfile
+                (
+                    snapshot,
+                    null,
+                    true,
+                    true,
+                    AccountManager.DEFAULT_DEVICE_PROFILE_ROTATION_DAYS,
+                    generatedUtcTicks
+                );
+                var pendingQrDeviceProfile = new PendingQrDeviceProfile(snapshot, false, generatedUtcTicks);
 
-                return new PostQrDeviceProfileResult(loginResult, accountManager.ResolveDeviceProfile(configuredNewAccount), configuredNewAccount);
+                Log.Information
+                (
+                    "[LoginWorkflow] 二维码登录生成临时独立设备画像, DeviceIdPrefix={DeviceIdPrefix}, GeneratedUtcTicks={GeneratedUtcTicks}",
+                    GetDeviceIdPrefix(snapshot),
+                    generatedUtcTicks
+                );
+
+                return new DeviceProfilePreparation
+                (
+                    resolvedDeviceProfile,
+                    null,
+                    true,
+                    true,
+                    pendingQrDeviceProfile
+                );
             }
 
             default:
+                Log.Information("[LoginWorkflow] 二维码登录设备画像选择已取消");
                 return null;
         }
     }
@@ -146,19 +233,33 @@ internal sealed class NewAccountDeviceProfileCoordinator
         accountManager.CurrentAccount = account;
         accountManager.Save();
     }
+
+    private static string GetDeviceIdPrefix(DeviceProfileSnapshot snapshot) =>
+        string.IsNullOrWhiteSpace(snapshot.DeviceId)
+            ? string.Empty
+            : snapshot.DeviceId[..Math.Min(8, snapshot.DeviceId.Length)];
 }
+
+internal sealed record PendingQrDeviceProfile
+(
+    DeviceProfileSnapshot Snapshot,
+    bool                  UseShared,
+    long                  GeneratedUtcTicks
+);
 
 internal sealed record DeviceProfilePreparation
 (
     ResolvedDeviceProfile ResolvedDeviceProfile,
     XIVAccount?           PendingNewAccount,
     bool                  RequiresNewAccountDeviceProfileSetup,
-    bool                  LoginQuickLoginEnabled
+    bool                  LoginQuickLoginEnabled,
+    PendingQrDeviceProfile? PendingQrDeviceProfile
 );
 
 internal sealed record PostQrDeviceProfileResult
 (
     LoginResult           LoginResult,
     ResolvedDeviceProfile ResolvedDeviceProfile,
-    XIVAccount?           PendingNewAccount
+    XIVAccount?           PendingNewAccount,
+    PendingQrDeviceProfile? PendingQrDeviceProfile
 );

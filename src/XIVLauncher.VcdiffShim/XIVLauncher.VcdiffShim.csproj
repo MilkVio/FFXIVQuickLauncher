@@ -22,7 +22,7 @@
     <PropertyGroup>
         <XdeltaShimDir>$(MSBuildProjectDirectory)\..\XIVLauncher.XdeltaShim</XdeltaShimDir>
         <XdeltaShimDllOutput>$(XdeltaShimDir)\target\release\xivlauncher_xdelta_shim.dll</XdeltaShimDllOutput>
-        <SkipXdeltaShim Condition="'$(SkipXdeltaShim)' == ''">false</SkipXdeltaShim>
+        <SkipXdeltaShim Condition="'$(SkipXdeltaShim)' == ''">$(SkipNativeShims)</SkipXdeltaShim>
     </PropertyGroup>
     <ItemGroup>
         <PackageReference Include="Serilog"/>

@@ -27,7 +27,10 @@ public sealed class LoginWorkflowService
             return null;
 
         var deviceProfileSnapshot = deviceProfilePreparation.ResolvedDeviceProfile.Snapshot;
-        var loginResult = await LoginAsync
+        LoginResult loginResult;
+        try
+        {
+            loginResult = await LoginAsync
                           (
                               request,
                               resolvedLoginState.FinalLoginType,
@@ -37,6 +40,17 @@ public sealed class LoginWorkflowService
                               deviceProfilePreparation.LoginQuickLoginEnabled,
                               deviceProfileSnapshot
                           ).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (deviceProfilePreparation.PendingQrDeviceProfile is { UseShared: false })
+        {
+            Log.Information
+            (
+                ex,
+                "[LoginWorkflow] 二维码登录未完成，丢弃临时独立设备画像, DeviceIdPrefix={DeviceIdPrefix}",
+                GetDeviceIdPrefix(deviceProfileSnapshot)
+            );
+            throw;
+        }
 
         var postQrResult = newAccountDeviceProfileCoordinator.ApplyAfterQrLogin(request, deviceProfilePreparation, resolvedLoginState, loginResult);
         if (postQrResult == null)
@@ -47,32 +61,23 @@ public sealed class LoginWorkflowService
         var pendingNewAccount     = postQrResult.PendingNewAccount;
         deviceProfileSnapshot = resolvedDeviceProfile.Snapshot;
 
-        if (deviceProfilePreparation.RequiresNewAccountDeviceProfileSetup
-            && resolvedLoginState.RequestedLoginType          == LoginType.QRCode
-            && loginResult.State                              == LoginState.Ok
-            && loginResult.OAuthLogin                         != null
-            && pendingNewAccount?.DeviceProfileDynamicEnabled == true)
-        {
-            var oAuthLogin = loginResult.OAuthLogin;
-            loginResult = await LoginAsync
-                          (
-                              request,
-                              LoginType.QuickLogin,
-                              LoginType.QuickLogin,
-                              oAuthLogin.InputUserID,
-                              oAuthLogin.QuickLoginSecret!,
-                              true,
-                              deviceProfileSnapshot
-                          ).ConfigureAwait(false);
-        }
-
         Func<Task<string>>? refreshGameSessionIdByQuickLoginFunc = null;
         var                 shouldShowQuickLoginDisclaimer       = false;
         var                 isAccountPersisted                   = false;
 
         if (loginResult.State == LoginState.Ok)
         {
-            var accountToSave = await SaveAccountAsync(request, resolvedLoginState, resolvedDeviceProfile, pendingNewAccount, loginResult, deviceProfileSnapshot);
+            var accountToSave = await SaveAccountAsync
+                                 (
+                                     request,
+                                     resolvedLoginState,
+                                     resolvedDeviceProfile,
+                                     pendingNewAccount,
+                                     postQrResult.PendingQrDeviceProfile,
+                                     deviceProfilePreparation.LoginQuickLoginEnabled,
+                                     loginResult,
+                                     deviceProfileSnapshot
+                                 ).ConfigureAwait(false);
 
             if (accountToSave != null)
             {
@@ -83,10 +88,11 @@ public sealed class LoginWorkflowService
                     && accountToSave.QuickLoginEnabled
                     && loginResult.OAuthLogin?.QuickLoginSecret is { Length: > 0 } autoLoginSessionKey)
                 {
-                    var refreshUsername     = resolvedLoginState.Username;
+                    var refreshUsername     = accountToSave.SdoLoginAccount;
                     var cachedDeviceProfile = deviceProfileSnapshot;
                     refreshGameSessionIdByQuickLoginFunc = async () =>
                     {
+                        ShowDeviceProfileDebugIfNeeded(request, LoginType.QuickLogin, cachedDeviceProfile);
                         var newLoginResult = await loginClient.LoginBySessionKey
                                              (
                                                  refreshUsername,
@@ -143,35 +149,50 @@ public sealed class LoginWorkflowService
         string                secret,
         bool                  quickLoginEnabled,
         DeviceProfileSnapshot deviceProfile
-    ) =>
-        loginClient.LoginWithFallback
+    )
+    {
+        return loginClient.LoginWithFallback
         (
             type,
             fallbackLoginType,
-            requestLoginType => LoginRequest.Create
-            (
-                username,
-                secret,
-                quickLoginEnabled,
-                deviceProfile,
-                request.LoginSessionRefreshSink,
-                request.LoginCancellationTokenSource,
-                qrBytes =>
-                {
-                    if (requestLoginType == LoginType.QRCode)
-                        request.Interaction.ShowQrCode(qrBytes);
-                },
-                code =>
-                {
-                    if (requestLoginType == LoginType.Slide)
-                        request.Interaction.ShowVerificationCode(code);
-                },
-                request.Interaction.ShowLoginMessage,
-                request.Interaction.PromptTextInput,
-                request.Interaction.PromptCaptchaInput
-            ),
+            requestLoginType =>
+            {
+                ShowDeviceProfileDebugIfNeeded(request, requestLoginType, deviceProfile);
+
+                return LoginRequest.Create
+                (
+                    username,
+                    secret,
+                    quickLoginEnabled,
+                    deviceProfile,
+                    request.LoginSessionRefreshSink,
+                    request.LoginCancellationTokenSource,
+                    qrBytes =>
+                    {
+                        if (requestLoginType == LoginType.QRCode)
+                            request.Interaction.ShowQrCode(qrBytes);
+                    },
+                    code =>
+                    {
+                        if (requestLoginType == LoginType.Slide)
+                            request.Interaction.ShowVerificationCode(code);
+                    },
+                    request.Interaction.ShowLoginMessage,
+                    request.Interaction.PromptTextInput,
+                    request.Interaction.PromptCaptchaInput
+                );
+            },
             request.LoginCancellationTokenSource.Token
         );
+    }
+
+    private static void ShowDeviceProfileDebugIfNeeded(LoginWorkflowRequest request, LoginType loginType, DeviceProfileSnapshot deviceProfile)
+    {
+        if (!request.DeviceProfileDebugEnabled || loginType is not (LoginType.QRCode or LoginType.QuickLogin))
+            return;
+
+        request.Interaction.ShowDeviceProfileDebug(loginType, deviceProfile);
+    }
 
     private async Task<XIVAccount?> SaveAccountAsync
     (
@@ -179,6 +200,8 @@ public sealed class LoginWorkflowService
         ResolvedLoginState    resolvedLoginState,
         ResolvedDeviceProfile resolvedDeviceProfile,
         XIVAccount?           pendingNewAccount,
+        PendingQrDeviceProfile? pendingQrDeviceProfile,
+        bool                    loginQuickLoginEnabled,
         LoginResult           loginResult,
         DeviceProfileSnapshot deviceProfileSnapshot
     )
@@ -187,44 +210,97 @@ public sealed class LoginWorkflowService
         if (oAuthLogin == null)
             return null;
 
-        var deviceProfileAccount = pendingNewAccount ?? resolvedLoginState.SavedAccount;
+        var existingAccount = accountManager.FindAccount(oAuthLogin.InputUserID, resolvedLoginState.AccountType)
+                              ?? resolvedLoginState.SavedAccount;
+        var deviceProfileAccount = pendingNewAccount ?? existingAccount;
         var accountToSave = new XIVAccount
         {
-            QuickLoginEnabled                  = resolvedLoginState.RequestedLoginType == LoginType.WeGame || resolvedLoginState.QuickLoginEnabled,
+            QuickLoginEnabled                  = resolvedLoginState.RequestedLoginType == LoginType.WeGame || loginQuickLoginEnabled,
             SdoLoginAccount                    = oAuthLogin.InputUserID,
             WeGameLoginAccount                 = oAuthLogin.InputUserID,
             AccountType                        = resolvedLoginState.AccountType,
             AreaName                           = resolvedLoginState.Area.AreaName,
             UserDefinedName                    = deviceProfileAccount?.UserDefinedName                    ?? null!,
+            SdoPassword                        = existingAccount?.SdoPassword                            ?? string.Empty,
+            SdoQuickLoginSecret                = existingAccount?.SdoQuickLoginSecret                    ?? string.Empty,
+            WeGameQuickLoginSecret             = existingAccount?.WeGameQuickLoginSecret,
             DeviceProfilePresetId              = deviceProfileAccount?.DeviceProfilePresetId              ?? string.Empty,
             DeviceProfileDynamicEnabled        = deviceProfileAccount?.DeviceProfileDynamicEnabled        ?? false,
             IsDeviceProfileRotation            = deviceProfileAccount?.IsDeviceProfileRotation            ?? true,
             DeviceProfileRotationDays          = deviceProfileAccount?.DeviceProfileRotationDays          ?? AccountManager.DEFAULT_DEVICE_PROFILE_ROTATION_DAYS,
-            DeviceProfileLastGeneratedUtcTicks = deviceProfileAccount?.DeviceProfileLastGeneratedUtcTicks ?? 0
+            DeviceProfileLastGeneratedUtcTicks = deviceProfileAccount?.DeviceProfileLastGeneratedUtcTicks ?? 0,
+            SortOrder                          = existingAccount?.SortOrder                              ?? 0
         };
 
         AccountManager.ApplyResolvedDeviceProfile(accountToSave, resolvedDeviceProfile);
 
-        if (resolvedLoginState.QuickLoginEnabled && accountToSave.AccountType == XIVAccountType.Sdo)
+        if (loginQuickLoginEnabled && accountToSave.AccountType == XIVAccountType.Sdo)
         {
             if (!string.IsNullOrEmpty(oAuthLogin.QuickLoginSecret))
-                accountToSave.SdoQuickLoginSecret = await accountManager.Encrypt(oAuthLogin.QuickLoginSecret) ?? string.Empty;
+                accountToSave.SdoQuickLoginSecret = await accountManager.Encrypt(oAuthLogin.QuickLoginSecret).ConfigureAwait(false) ?? throw new InvalidOperationException("保存快速登录凭据失败");
+            else if (resolvedLoginState.RequestedLoginType == LoginType.QRCode)
+                throw new InvalidOperationException("扫码登录未返回可保存的快速登录凭据");
 
             if (resolvedLoginState.FinalLoginType == LoginType.Static)
-                accountToSave.SdoPassword = await accountManager.Encrypt(resolvedLoginState.Secret) ?? string.Empty;
+                accountToSave.SdoPassword = await accountManager.Encrypt(resolvedLoginState.Secret).ConfigureAwait(false) ?? throw new InvalidOperationException("保存账号密码失败");
         }
 
         if (resolvedLoginState.FinalLoginType == LoginType.WeGame)
         {
-            accountToSave.WeGameQuickLoginSecret = await accountManager.Encrypt(resolvedLoginState.Secret);
+            accountToSave.WeGameQuickLoginSecret = await accountManager.Encrypt(resolvedLoginState.Secret).ConfigureAwait(false);
             Log.Information("[LoginWorkflow] WeGame 令牌已保存, 账号={Account}", accountToSave.WeGameLoginAccount);
         }
 
+        DeviceProfilePreset? createdDeviceProfilePreset = null;
         accountToSave.GenerateID();
-        accountManager.AddAccount(accountToSave);
-        accountManager.CurrentAccount = accountToSave;
-        accountManager.Save();
-        await accountManager.CredProvider.ClearCache();
+
+        try
+        {
+            if (pendingQrDeviceProfile is { UseShared: false })
+            {
+                createdDeviceProfilePreset = accountManager.CreateDeviceProfilePreset(pendingQrDeviceProfile.Snapshot, pendingQrDeviceProfile.GeneratedUtcTicks, null);
+                accountToSave.DeviceProfileDynamicEnabled        = true;
+                accountToSave.DeviceProfilePresetId              = createdDeviceProfilePreset.Id;
+                accountToSave.DeviceProfileLastGeneratedUtcTicks = pendingQrDeviceProfile.GeneratedUtcTicks;
+
+                Log.Information
+                (
+                    existingAccount == null
+                        ? "[LoginWorkflow] 扫码成功后创建正式预设并绑定新账号, 账号={Account}, PresetId={PresetId}, DeviceIdPrefix={DeviceIdPrefix}"
+                        : "[LoginWorkflow] 扫码成功后创建正式预设并重新绑定已有账号, 账号={Account}, PresetId={PresetId}, DeviceIdPrefix={DeviceIdPrefix}",
+                    accountToSave.UserName,
+                    createdDeviceProfilePreset.Id,
+                    GetDeviceIdPrefix(pendingQrDeviceProfile.Snapshot)
+                );
+            }
+            else if (pendingQrDeviceProfile is { UseShared: true })
+            {
+                accountToSave.DeviceProfileDynamicEnabled = false;
+                Log.Information("[LoginWorkflow] 扫码成功后保存共享设备画像账号, 账号={Account}", accountToSave.UserName);
+            }
+
+            accountManager.AddAccount(accountToSave);
+            accountManager.CurrentAccount = accountToSave;
+            accountManager.Save();
+            await accountManager.CredProvider.ClearCache().ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            if (createdDeviceProfilePreset != null)
+            {
+                var cleaned = accountManager.TryDeleteUnreferencedDeviceProfilePreset(createdDeviceProfilePreset.Id);
+                Log.Warning
+                (
+                    ex,
+                    "[LoginWorkflow] 账号保存失败，已尝试清理本次创建的孤立设备预设, PresetId={PresetId}, Cleaned={Cleaned}",
+                    createdDeviceProfilePreset.Id,
+                    cleaned
+                );
+            }
+
+            throw;
+        }
+
         return accountToSave;
     }
 
@@ -250,4 +326,9 @@ public sealed class LoginWorkflowService
 
         return string.Empty;
     }
+
+    private static string GetDeviceIdPrefix(DeviceProfileSnapshot snapshot) =>
+        string.IsNullOrWhiteSpace(snapshot.DeviceId)
+            ? string.Empty
+            : snapshot.DeviceId[..Math.Min(8, snapshot.DeviceId.Length)];
 }

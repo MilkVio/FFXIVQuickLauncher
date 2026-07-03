@@ -1,4 +1,4 @@
-using System.Windows;
+﻿using System.Windows;
 using Serilog;
 using Velopack;
 using Velopack.Sources;
@@ -103,7 +103,7 @@ internal class UpdateOrchestrator
             CustomMessageBox.Show
             (
                 $"错误：{detailMessage}{Environment.NewLine}{Environment.NewLine}{UPDATE_FAIL_HINT}",
-                "XIVLauncherCN (Soil)",
+                "XIVLauncherCN (Violet)",
                 MessageBoxButton.OK,
                 MessageBoxImage.Error,
                 showOfficialLauncher: true
@@ -114,7 +114,7 @@ internal class UpdateOrchestrator
                 var result = CustomMessageBox.Show
                 (
                     "无法完成更新检查。根据你的设置，是否继续使用当前版本？\n请注意：这通常意味着当前无法稳定连接更新源，即使进入 XIVLauncher，也可能无法完成 Dalamud 的更新检查与下载。",
-                    "XIVLauncherCN (Soil)",
+                    "XIVLauncherCN (Violet)",
                     MessageBoxButton.YesNo,
                     MessageBoxImage.Question,
                     showDiscordLink: false,

@@ -1,0 +1,69 @@
+<Window
+    x:Class="XIVLauncher.Windows.QrLoginDeviceProfileChoiceWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+    Title="机器码"
+    Width="480"
+    ResizeMode="NoResize"
+    SizeToContent="Height"
+    WindowStartupLocation="CenterOwner"
+    Background="{DynamicResource MaterialDesign.Brush.Background}"
+    TextElement.Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
+    TextElement.FontWeight="Regular"
+    TextElement.FontSize="14"
+    Icon="pack://application:,,,/Resources/dalamud_icon.ico">
+
+    <Grid Margin="24">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,20" VerticalAlignment="Center">
+            <materialDesign:PackIcon Kind="MonitorAccount"
+                                     Width="32"
+                                     Height="32"
+                                     Margin="0,0,14,0"
+                                     VerticalAlignment="Center"
+                                     Foreground="{DynamicResource MaterialDesign.Brush.Primary}" />
+            <TextBlock Text="选择本次二维码登录使用的机器码"
+                       FontSize="18"
+                       FontWeight="SemiBold"
+                       TextWrapping="Wrap"
+                       VerticalAlignment="Center" />
+        </StackPanel>
+
+        <StackPanel Grid.Row="1" Margin="46,0,0,24">
+            <RadioButton x:Name="CreateIndependentRadioButton"
+                         Margin="0,0,0,12"
+                         GroupName="QrDeviceProfileChoice"
+                         IsChecked="True"
+                         Content="新建独立机器码" />
+            <RadioButton x:Name="UseSharedRadioButton"
+                         GroupName="QrDeviceProfileChoice"
+                         Content="使用共享机器码" />
+        </StackPanel>
+
+        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right">
+            <Button Width="100"
+                    Margin="0,0,12,0"
+                    Style="{StaticResource MaterialDesignOutlinedButton}"
+                    Click="CancelButton_OnClick">
+                <StackPanel Orientation="Horizontal">
+                    <materialDesign:PackIcon Kind="Close" Margin="0,0,6,0" VerticalAlignment="Center" />
+                    <TextBlock Text="取消" VerticalAlignment="Center" />
+                </StackPanel>
+            </Button>
+            <Button Width="100"
+                    IsDefault="True"
+                    Click="ContinueButton_OnClick">
+                <StackPanel Orientation="Horizontal">
+                    <materialDesign:PackIcon Kind="ArrowRight" Margin="0,0,6,0" VerticalAlignment="Center" />
+                    <TextBlock Text="继续" VerticalAlignment="Center" />
+                </StackPanel>
+            </Button>
+        </StackPanel>
+    </Grid>
+</Window>

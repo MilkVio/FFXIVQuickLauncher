@@ -1,7 +1,7 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
-        <Product>XIVLauncherCN (Soil)</Product>
-        <AssemblyTitle>XIVLauncherCN (Soil)</AssemblyTitle>
+        <Product>XIVLauncherCN (Violet)</Product>
+        <AssemblyTitle>XIVLauncherCN (Violet)</AssemblyTitle>
         <Description>Custom launcher for the most critically acclaimed MMO's CN server.</Description>
         <VersionPrefix>2.3.0</VersionPrefix>
         <ImplicitUsings>enable</ImplicitUsings>
@@ -130,7 +130,7 @@
         <ApkalluCallerOutput>$(ApkalluCallerDir)\target\$(ApkalluCallerTarget)\release\version.dll</ApkalluCallerOutput>
         <ApkalluCallerStage>$(MSBuildProjectDirectory)\Resources\version.dll</ApkalluCallerStage>
         <ApkalluCallerSource>$(ApkalluCallerDir)\src\lib.rs</ApkalluCallerSource>
-        <SkipApkalluCaller Condition="'$(SkipApkalluCaller)' == ''">false</SkipApkalluCaller>
+        <SkipApkalluCaller Condition="'$(SkipApkalluCaller)' == ''">$(SkipNativeShims)</SkipApkalluCaller>
     </PropertyGroup>
 
     <Target Name="BuildApkalluCaller"

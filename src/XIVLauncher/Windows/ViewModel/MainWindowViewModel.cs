@@ -1,4 +1,4 @@
-using System.ComponentModel;
+﻿using System.ComponentModel;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
@@ -344,7 +344,7 @@ internal class MainWindowViewModel : INotifyPropertyChanged
             CustomMessageBox.Show
             (
                 "获取服务器信息失败, 无法登录",
-                "XIVLauncherCN (Soil)",
+                "XIVLauncherCN (Violet)",
                 MessageBoxButton.OK,
                 MessageBoxImage.Error,
                 parentWindow: Window
@@ -370,7 +370,8 @@ internal class MainWindowViewModel : INotifyPropertyChanged
             LoginCancellationTokenSource         = LoginCancelSource ?? new CancellationTokenSource(),
             LoginSessionRefreshSink              = DcTravelRuntimeService,
             Interaction                          = new MainWindowLoginInteraction(Window, LoginPage, DialogProvider),
-            RequireDeviceProfileSetupForNewLogin = App.Settings.RequireDeviceProfileSetupForNewLogin
+            RequireDeviceProfileSetupForNewLogin = App.Settings.RequireDeviceProfileSetupForNewLogin,
+            DeviceProfileDebugEnabled            = App.Settings.DeviceProfileDebugEnabled
         };
 
         LoginWorkflowResult? workflowResult = null;
@@ -651,7 +652,7 @@ internal class MainWindowViewModel : INotifyPropertyChanged
         var selfPatchAsk = CustomMessageBox.Show
         (
             "检测到新的游戏补丁\n是否下载更新文件并安装?",
-            "XIVLauncherCN (Soil)",
+            "XIVLauncherCN (Violet)",
             MessageBoxButton.YesNo,
             parentWindow: Window
         );
@@ -669,7 +670,7 @@ internal class MainWindowViewModel : INotifyPropertyChanged
                 CustomMessageBox.Show
                 (
                     "该账号无游戏游玩权限, 请检查当前账号状态",
-                    "XIVLauncherCN (Soil)",
+                    "XIVLauncherCN (Violet)",
                     MessageBoxButton.OK,
                     MessageBoxImage.Error,
                     false,
@@ -683,7 +684,7 @@ internal class MainWindowViewModel : INotifyPropertyChanged
                 CustomMessageBox.Show
                 (
                     "该账号尚未接受游玩使用条款, 请前往官方启动器进行相关操作",
-                    "XIVLauncherCN (Soil)",
+                    "XIVLauncherCN (Violet)",
                     MessageBoxButton.OK,
                     MessageBoxImage.Error,
                     showOfficialLauncher: true,
@@ -696,7 +697,7 @@ internal class MainWindowViewModel : INotifyPropertyChanged
                 CustomMessageBox.Show
                 (
                     "部分游戏文件损坏, 当前无法更新与启动游戏, 请重新安装游戏",
-                    "XIVLauncherCN (Soil)",
+                    "XIVLauncherCN (Violet)",
                     MessageBoxButton.OK,
                     MessageBoxImage.Error,
                     parentWindow: Window
@@ -711,7 +712,7 @@ internal class MainWindowViewModel : INotifyPropertyChanged
             CustomMessageBox.Show
             (
                 "登录失败, 建议尝试重新扫码登录",
-                "XIVLauncherCN (Soil)",
+                "XIVLauncherCN (Violet)",
                 MessageBoxButton.OK,
                 MessageBoxImage.Information,
                 false,
@@ -786,7 +787,7 @@ internal class MainWindowViewModel : INotifyPropertyChanged
                     CustomMessageBox.Show
                     (
                         "登录异常: SNDAID 为空",
-                        "XIVLauncherCN (Soil)",
+                        "XIVLauncherCN (Violet)",
                         MessageBoxButton.OK,
                         MessageBoxImage.Error,
                         showOfficialLauncher: true,
@@ -1058,7 +1059,7 @@ internal class MainWindowViewModel : INotifyPropertyChanged
 
         if (stopwatch.Elapsed > TimeSpan.FromMinutes(5))
         {
-            CustomMessageBox.Show("会话已过期,请重新登录", "XIVLauncherCN (Soil)", MessageBoxButton.OK, MessageBoxImage.Exclamation, parentWindow: Window);
+            CustomMessageBox.Show("会话已过期,请重新登录", "XIVLauncherCN (Violet)", MessageBoxButton.OK, MessageBoxImage.Exclamation, parentWindow: Window);
             return null;
         }
 
@@ -1167,7 +1168,7 @@ internal class MainWindowViewModel : INotifyPropertyChanged
                 CustomMessageBox.Show
                 (
                     "登录会话已过期，请重新登录",
-                    "XIVLauncherCN (Soil)",
+                    "XIVLauncherCN (Violet)",
                     MessageBoxButton.OK,
                     MessageBoxImage.Error,
                     parentWindow: Window
@@ -1182,7 +1183,7 @@ internal class MainWindowViewModel : INotifyPropertyChanged
             CustomMessageBox.Show
             (
                 "登录异常: SessionID 为空",
-                "XIVLauncherCN (Soil)",
+                "XIVLauncherCN (Violet)",
                 MessageBoxButton.OK,
                 MessageBoxImage.Error,
                 showOfficialLauncher: true,
@@ -1286,7 +1287,7 @@ internal class MainWindowViewModel : INotifyPropertyChanged
             CustomMessageBox.Show
             (
                 "Dalamud 需要安装 Microsoft Visual C++ 2015-2019 Redistributable, 请前往微软官网下载并安装",
-                "XIVLauncherCN (Soil)",
+                "XIVLauncherCN (Violet)",
                 MessageBoxButton.OK,
                 MessageBoxImage.Exclamation,
                 parentWindow: Window
@@ -1299,7 +1300,7 @@ internal class MainWindowViewModel : INotifyPropertyChanged
             CustomMessageBox.Show
             (
                 "Dalamud 仅支持 64 位 Windows\n若本机为 ARM 架构, 请检查是否已为 XIVLauncher 启用 64 位模拟器",
-                "XIVLauncherCN (Soil)",
+                "XIVLauncherCN (Violet)",
                 MessageBoxButton.OK,
                 MessageBoxImage.Exclamation,
                 parentWindow: Window

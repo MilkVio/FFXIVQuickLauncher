@@ -4,6 +4,11 @@
         <LangVersion>latest</LangVersion>
         <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
     </PropertyGroup>
+    <PropertyGroup Label="Native Shims">
+        <!-- Keep the normal local C# debug loop usable without a Rust toolchain; CI/release still builds native shims. -->
+        <SkipNativeShims Condition="'$(SkipNativeShims)' == '' and '$(Configuration)' == 'Debug' and '$(CI)' != 'true'">true</SkipNativeShims>
+        <SkipNativeShims Condition="'$(SkipNativeShims)' == ''">false</SkipNativeShims>
+    </PropertyGroup>
     <PropertyGroup Label="Documentation">
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
         <NoWarn>$(NoWarn);CS1591</NoWarn>

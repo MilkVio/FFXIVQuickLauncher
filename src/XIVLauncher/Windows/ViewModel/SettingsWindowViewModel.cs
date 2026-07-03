@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
@@ -96,6 +96,12 @@ public sealed class SettingsWindowViewModel : INotifyPropertyChanged
     }
 
     public bool RequireDeviceProfileSetupForNewAccountLogin
+    {
+        get;
+        set => SetProperty(ref field, value);
+    }
+
+    public bool DeviceProfileDebugEnabled
     {
         get;
         set => SetProperty(ref field, value);
@@ -273,6 +279,7 @@ public sealed class SettingsWindowViewModel : INotifyPropertyChanged
         ExitLauncherAfterGameExit                   = App.Settings.ExitLauncherWhenGameExit;
         KeepPatches                                 = App.Settings.KeepPatches;
         RequireDeviceProfileSetupForNewAccountLogin = App.Settings.RequireDeviceProfileSetupForNewLogin;
+        DeviceProfileDebugEnabled                   = App.Settings.DeviceProfileDebugEnabled;
         DalamudInjectionDelayMs                     = App.Settings.DalamudInjectionDelayMS;
         ManualInjectDelayMs                         = App.Settings.ManualInjectDelayMs;
         UseEntryPointLoadMethod                     = App.Settings.DalamudLoadMethod == DalamudLoadMethod.EntryPoint;
@@ -322,7 +329,7 @@ public sealed class SettingsWindowViewModel : INotifyPropertyChanged
             _dialogService.ShowMessage
             (
                 credTypeApplyResult.UserMessage ?? $"切换到 {requestedCredType.GetDisplayName()} 失败，请稍后重试。",
-                "XIVLauncherCN (Soil)",
+                "XIVLauncherCN (Violet)",
                 MessageBoxButton.OK,
                 MessageBoxImage.Warning,
                 false,
@@ -341,6 +348,7 @@ public sealed class SettingsWindowViewModel : INotifyPropertyChanged
                 settings.ExitLauncherWhenGameExit             = ExitLauncherAfterGameExit;
                 settings.KeepPatches                          = KeepPatches;
                 settings.RequireDeviceProfileSetupForNewLogin = RequireDeviceProfileSetupForNewAccountLogin;
+                settings.DeviceProfileDebugEnabled            = DeviceProfileDebugEnabled;
                 settings.DalamudEnabled                       = EnableHooks;
                 settings.DalamudInjectionDelayMS              = DalamudInjectionDelayMs ?? 0;
                 settings.ManualInjectDelayMs                  = ManualInjectDelayMs     ?? 0;

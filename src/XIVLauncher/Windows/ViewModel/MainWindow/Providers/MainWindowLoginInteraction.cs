@@ -1,7 +1,8 @@
-using System.Windows;
+﻿using System.Windows;
 using System.Diagnostics;
 using System.ComponentModel;
 using XIVLauncher.Account;
+using XIVLauncher.Account.DeviceProfiles;
 using XIVLauncher.Login;
 using XIVLauncher.Windows.Services;
 
@@ -31,6 +32,25 @@ public sealed class MainWindowLoginInteraction
     public void ShowLoginMessage(string message) =>
         window.Dispatcher.Invoke(() => loginPage.LoginMessage = message);
 
+    public void ShowDeviceProfileDebug(LoginType loginType, DeviceProfileSnapshot deviceProfile) =>
+        window.Dispatcher.Invoke
+        (() =>
+            CustomMessageBox.Builder
+                            .NewFrom
+                            (
+                                "即将发送机器码\n\n"
+                                + $"登录类型: {loginType}\n"
+                                + $"DeviceId: {deviceProfile.DeviceId}\n"
+                                + $"MacAddress: {deviceProfile.MacAddress}\n"
+                                + $"HostName: {deviceProfile.HostName}\n"
+                                + $"MacHash: {deviceProfile.MacHash}\n"
+                                + $"CASCID: {deviceProfile.CasCid}"
+                            )
+                            .WithCaption("机器码 Debug")
+                            .WithParentWindow(window)
+                            .Show()
+        );
+
     public string? PromptTextInput(string text, string caption, string initialText) =>
         window.Dispatcher.Invoke(() => new DialogService(window).ShowTextInput(text, caption, initialText, window));
 
@@ -50,25 +70,34 @@ public sealed class MainWindowLoginInteraction
             }
         );
 
+    public NewAccountDeviceProfileChoice PromptQrLoginDeviceProfileChoice() =>
+        window.Dispatcher.Invoke(dialogProvider.PromptQrLoginDeviceProfileChoice);
+
     public NewAccountDeviceProfileChoice PromptNewAccountDeviceProfileChoice() =>
-        dialogProvider.PromptNewAccountDeviceProfileChoice() switch
-        {
-            MessageBoxResult.Yes => NewAccountDeviceProfileChoice.UseShared,
-            MessageBoxResult.No  => NewAccountDeviceProfileChoice.ConfigurePerAccount,
-            _                    => NewAccountDeviceProfileChoice.Cancel
-        };
+        window.Dispatcher.Invoke
+        (() =>
+            dialogProvider.PromptNewAccountDeviceProfileChoice() switch
+            {
+                MessageBoxResult.Yes => NewAccountDeviceProfileChoice.UseShared,
+                MessageBoxResult.No  => NewAccountDeviceProfileChoice.ConfigurePerAccount,
+                _                    => NewAccountDeviceProfileChoice.Cancel
+            }
+        );
 
     public bool ConfigureTemporaryAccountDeviceProfile(XIVAccount account, AccountManager accountManager) =>
-        dialogProvider.ShowTemporaryAccountDeviceProfileSettings(account, accountManager);
+        window.Dispatcher.Invoke(() => dialogProvider.ShowTemporaryAccountDeviceProfileSettings(account, accountManager));
 
     public void ShowError(string message) =>
-        CustomMessageBox.Show
-        (
-            message,
-            "XIVLauncherCN (Soil)",
-            MessageBoxButton.OK,
-            MessageBoxImage.Error,
-            parentWindow: window
+        window.Dispatcher.Invoke
+        (() =>
+            CustomMessageBox.Show
+            (
+                message,
+                "XIVLauncherCN (Violet)",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error,
+                parentWindow: window
+            )
         );
 
     public string? GetSavedWeGameLauncherPath() =>

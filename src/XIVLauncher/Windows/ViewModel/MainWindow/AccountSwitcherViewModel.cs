@@ -1,4 +1,4 @@
-using System.Collections.ObjectModel;
+﻿using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Drawing;
 using System.Drawing.Imaging;
@@ -187,7 +187,7 @@ internal sealed class AccountSwitcherViewModel : INotifyPropertyChanged
             dialogService.ShowMessage
             (
                 $"创建桌面快捷方式失败。\n{ex.Message}",
-                "XIVLauncherCN (Soil)",
+                "XIVLauncherCN (Violet)",
                 MessageBoxButton.OK,
                 MessageBoxImage.Error
             );

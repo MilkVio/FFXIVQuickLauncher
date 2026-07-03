@@ -1,4 +1,4 @@
-using System.IO;
+﻿using System.IO;
 using System.Windows;
 using System.Windows.Threading;
 using CommandLine;
@@ -81,7 +81,7 @@ public class StartupOrchestrator
         }
         catch (Exception ex)
         {
-            MessageBox.Show("无法设置日志记录, 请反馈此问题\n\n" + ex.Message, "XIVLauncherCN (Soil)", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show("无法设置日志记录, 请反馈此问题\n\n" + ex.Message, "XIVLauncherCN (Violet)", MessageBoxButton.OK, MessageBoxImage.Error);
             throw;
         }
     }
@@ -119,7 +119,7 @@ public class StartupOrchestrator
         }
         catch (Exception ex)
         {
-            MessageBox.Show("无法解析命令行参数, 请反馈此问题\n\n" + ex.Message, "XIVLauncherCN (Soil)", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show("无法解析命令行参数, 请反馈此问题\n\n" + ex.Message, "XIVLauncherCN (Violet)", MessageBoxButton.OK, MessageBoxImage.Error);
             throw;
         }
     }

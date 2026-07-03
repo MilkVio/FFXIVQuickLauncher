@@ -272,6 +272,15 @@ public sealed class LauncherSettingsV3 : IAccountSettingsStore
     }
 
     /// <summary>
+    ///     是否在登录请求前显示本次发送的设备画像
+    /// </summary>
+    public bool DeviceProfileDebugEnabled
+    {
+        get;
+        set => Set(ref field, value);
+    }
+
+    /// <summary>
     ///     凭据存储类型
     /// </summary>
     public CredType CredType

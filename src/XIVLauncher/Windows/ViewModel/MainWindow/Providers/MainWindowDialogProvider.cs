@@ -1,5 +1,6 @@
 using System.Windows;
 using XIVLauncher.Account;
+using XIVLauncher.Login;
 using Microsoft.WindowsAPICodePack.Dialogs;
 
 namespace XIVLauncher.Windows.ViewModel.MainWindow.Providers;
@@ -9,6 +10,19 @@ public sealed class MainWindowDialogProvider
     Window window
 )
 {
+    public NewAccountDeviceProfileChoice PromptQrLoginDeviceProfileChoice()
+    {
+        var dialog = new QrLoginDeviceProfileChoiceWindow();
+
+        if (window.IsVisible)
+        {
+            dialog.Owner         = window;
+            dialog.ShowInTaskbar = false;
+        }
+
+        return dialog.ShowDialog() == true ? dialog.Choice : NewAccountDeviceProfileChoice.Cancel;
+    }
+
     public MessageBoxResult PromptNewAccountDeviceProfileChoice() =>
         CustomMessageBox.Builder
                         .NewFrom("检测到新账号首次登录，需先确认本次使用的设备信息")

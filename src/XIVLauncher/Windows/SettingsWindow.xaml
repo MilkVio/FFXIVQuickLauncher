@@ -368,6 +368,23 @@
                                                   Style="{StaticResource MaterialDesignSwitchToggleButton}" />
                                 </Grid>
 
+                                <Grid Margin="0,0,0,24">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel VerticalAlignment="Center" Margin="0,0,16,0">
+                                        <TextBlock Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
+                                                   Text="开启机器码 Debug 模式" FontSize="15" />
+                                        <TextBlock Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
+                                                   Text="二维码登录和快速登录发起前弹出本次实际发送的机器码" Opacity="0.7" FontSize="12"
+                                                   TextWrapping="Wrap" />
+                                    </StackPanel>
+                                    <ToggleButton Grid.Column="1"
+                                                  IsChecked="{Binding DeviceProfileDebugEnabled}"
+                                                  Style="{StaticResource MaterialDesignSwitchToggleButton}" />
+                                </Grid>
+
                                 <Grid>
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*" />

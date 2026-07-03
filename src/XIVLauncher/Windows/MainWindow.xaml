@@ -1,4 +1,4 @@
-<Window
+﻿<Window
     x:Class="XIVLauncher.Windows.MainWindow"
     x:Name="RootWindow"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
@@ -16,7 +16,7 @@
     xmlns:transitions="clr-namespace:XIVLauncher.Xaml.Transitions"
     xmlns:mainWindow="clr-namespace:XIVLauncher.Windows.ViewModel.MainWindow"
     mc:Ignorable="d"
-    Title="XIVLauncherCN (Soil)"
+    Title="XIVLauncherCN (Violet)"
     Width="780"
     Height="540"
     ResizeMode="CanMinimize" WindowStartupLocation="CenterScreen"

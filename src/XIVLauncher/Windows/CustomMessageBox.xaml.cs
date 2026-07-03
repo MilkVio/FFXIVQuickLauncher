@@ -1,4 +1,4 @@
-using System.ComponentModel;
+﻿using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Media;
@@ -398,7 +398,7 @@ public partial class CustomMessageBox
     public class Builder
     {
         internal string           Text;
-        internal string           Caption = "XIVLauncherCN (Soil)";
+        internal string           Caption = "XIVLauncherCN (Violet)";
         internal string           Description;
         internal MessageBoxButton Buttons       = MessageBoxButton.OK;
         internal MessageBoxResult DefaultResult = MessageBoxResult.None; // On enter

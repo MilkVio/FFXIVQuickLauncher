@@ -1,4 +1,4 @@
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.IO;
 using System.Media;
 using System.Windows;
@@ -30,7 +30,7 @@ public partial class ChangelogWindow : Window
     }
 
     public void UpdateVersion(string version) =>
-        Model.UpdateNotice = $"XIVLauncherCN (Soil) 已更新至 {version}";
+        Model.UpdateNotice = $"XIVLauncherCN (Violet) 已更新至 {version}";
 
     public new void Show()
     {

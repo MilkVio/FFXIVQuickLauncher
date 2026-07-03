@@ -1,4 +1,4 @@
-using System.Collections.ObjectModel;
+﻿using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows;
@@ -214,7 +214,7 @@ public sealed class InjectPageViewModel : INotifyPropertyChanged
                         CustomMessageBox.Builder
                                         .NewFrom("选定进程已被注入")
                                         .WithButtons(MessageBoxButton.OK)
-                                        .WithCaption("XIVLauncherCN (Soil)")
+                                        .WithCaption("XIVLauncherCN (Violet)")
                                         .WithParentWindow(window)
                                         .Show();
                         return;
@@ -233,7 +233,7 @@ public sealed class InjectPageViewModel : INotifyPropertyChanged
                     var dialog = CustomMessageBox.Builder
                                                  .NewFrom("注入完成, 是否要退出 XIVLauncherCN")
                                                  .WithButtons(MessageBoxButton.YesNo)
-                                                 .WithCaption("XIVLauncherCN (Soil)")
+                                                 .WithCaption("XIVLauncherCN (Violet)")
                                                  .WithParentWindow(window)
                                                  .Show();
 

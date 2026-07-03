@@ -648,6 +648,40 @@ public class AccountManager
     }
 
     /// <summary>
+    ///     仅当设备预设不是共享预设且未被任何账号引用时删除它。
+    /// </summary>
+    /// <param name="presetId">预设 ID</param>
+    /// <returns>实际删除则返回 <see langword="true" /></returns>
+    public bool TryDeleteUnreferencedDeviceProfilePreset(string presetId)
+    {
+        var state = GetDeviceProfilePresetStoreState();
+        if (string.IsNullOrWhiteSpace(presetId)
+            || string.Equals(state.SharedPresetId, presetId, StringComparison.Ordinal)
+            || state.Presets.Count <= 1
+            || Accounts.Any(account => string.Equals(account.DeviceProfilePresetId, presetId, StringComparison.Ordinal)))
+            return false;
+
+        var presets = state.Presets
+                           .Where(preset => !string.Equals(preset.Id, presetId, StringComparison.Ordinal))
+                           .ToList();
+
+        if (presets.Count == state.Presets.Count)
+            return false;
+
+        PersistDeviceProfilePresetStoreState
+        (
+            new DeviceProfilePresetStoreState
+            {
+                Version        = state.Version,
+                SharedPresetId = state.SharedPresetId,
+                Presets        = presets
+            }
+        );
+
+        return true;
+    }
+
+    /// <summary>
     ///     保存账号设备预设选择，直接指定预设
     /// </summary>
     /// <param name="account">目标账号</param>
