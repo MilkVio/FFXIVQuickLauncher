@@ -68,8 +68,8 @@ public sealed class MainWindowLoginInteraction
             }
         );
 
-    public NewAccountDeviceProfileChoice PromptQrLoginDeviceProfileChoice() =>
-        window.Dispatcher.Invoke(dialogProvider.PromptQrLoginDeviceProfileChoice);
+    public QrLoginDeviceProfileSelection PromptQrLoginDeviceProfileChoice(IReadOnlyList<XIVAccount> independentDeviceProfileAccounts) =>
+        window.Dispatcher.Invoke(() => dialogProvider.PromptQrLoginDeviceProfileChoice(independentDeviceProfileAccounts));
 
     public NewAccountDeviceProfileChoice PromptNewAccountDeviceProfileChoice() =>
         window.Dispatcher.Invoke

@@ -44,6 +44,38 @@
             <RadioButton x:Name="UseSharedRadioButton"
                          GroupName="QrDeviceProfileChoice"
                          Content="使用共享机器码" />
+
+            <TextBlock x:Name="IndependentAccountHintTextBlock"
+                       Margin="0,18,0,8"
+                       Text="选择账户独立机器码"
+                       FontWeight="SemiBold" />
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <ComboBox x:Name="IndependentAccountComboBox"
+                          DisplayMemberPath="DisplayName"
+                          SelectionChanged="IndependentAccountComboBox_OnSelectionChanged"
+                          materialDesign:HintAssist.Hint="不选择" />
+                <Button x:Name="ClearIndependentAccountButton"
+                        Grid.Column="1"
+                        Width="36"
+                        Height="36"
+                        Margin="8,0,0,0"
+                        Padding="0"
+                        ToolTip="清除选择"
+                        Style="{StaticResource MaterialDesignIconButton}"
+                        Click="ClearIndependentAccountButton_OnClick">
+                    <materialDesign:PackIcon Kind="Close" Width="18" Height="18" />
+                </Button>
+            </Grid>
+            <TextBlock x:Name="NoIndependentAccountTextBlock"
+                       Margin="0,8,0,0"
+                       Text="暂无启用独立机器码的账号"
+                       Opacity="0.72"
+                       FontSize="12"
+                       Visibility="Collapsed" />
         </StackPanel>
 
         <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right">

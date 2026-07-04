@@ -5,5 +5,6 @@ public enum NewAccountDeviceProfileChoice
     Cancel,
     UseShared,
     CreateIndependent,
-    ConfigurePerAccount
+    ConfigurePerAccount,
+    UseExistingIndependent
 }

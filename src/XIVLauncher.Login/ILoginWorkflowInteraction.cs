@@ -17,7 +17,7 @@ public interface ILoginWorkflowInteraction
 
     string? PromptCaptchaInput(LoginCaptchaChallenge challenge);
 
-    NewAccountDeviceProfileChoice PromptQrLoginDeviceProfileChoice();
+    QrLoginDeviceProfileSelection PromptQrLoginDeviceProfileChoice(IReadOnlyList<XIVAccount> independentDeviceProfileAccounts);
 
     NewAccountDeviceProfileChoice PromptNewAccountDeviceProfileChoice();
 

@@ -298,3 +298,6 @@ docs/
 .wrangler/
 .reasonix
 .codegraph
+
+# Local planning notes
+/改动计划.txt

@@ -10,9 +10,9 @@ public sealed class MainWindowDialogProvider
     Window window
 )
 {
-    public NewAccountDeviceProfileChoice PromptQrLoginDeviceProfileChoice()
+    public QrLoginDeviceProfileSelection PromptQrLoginDeviceProfileChoice(IReadOnlyList<XIVAccount> independentDeviceProfileAccounts)
     {
-        var dialog = new QrLoginDeviceProfileChoiceWindow();
+        var dialog = new QrLoginDeviceProfileChoiceWindow(independentDeviceProfileAccounts);
 
         if (window.IsVisible)
         {
@@ -20,7 +20,7 @@ public sealed class MainWindowDialogProvider
             dialog.ShowInTaskbar = false;
         }
 
-        return dialog.ShowDialog() == true ? dialog.Choice : NewAccountDeviceProfileChoice.Cancel;
+        return dialog.ShowDialog() == true ? dialog.Selection : QrLoginDeviceProfileSelection.Cancel;
     }
 
     public MessageBoxResult PromptNewAccountDeviceProfileChoice() =>

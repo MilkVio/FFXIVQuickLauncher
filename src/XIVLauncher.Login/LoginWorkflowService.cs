@@ -43,10 +43,14 @@ public sealed class LoginWorkflowService
         }
         catch (Exception ex) when (deviceProfilePreparation.PendingQrDeviceProfile is { UseShared: false })
         {
+            var message = deviceProfilePreparation.PendingQrDeviceProfile.PresetId == null
+                              ? "[LoginWorkflow] 二维码登录未完成，丢弃临时独立设备画像, DeviceIdPrefix={DeviceIdPrefix}"
+                              : "[LoginWorkflow] 二维码登录未完成，未绑定既有独立设备画像, DeviceIdPrefix={DeviceIdPrefix}";
+
             Log.Information
             (
                 ex,
-                "[LoginWorkflow] 二维码登录未完成，丢弃临时独立设备画像, DeviceIdPrefix={DeviceIdPrefix}",
+                message,
                 GetDeviceIdPrefix(deviceProfileSnapshot)
             );
             throw;
@@ -293,20 +297,41 @@ public sealed class LoginWorkflowService
         {
             if (pendingQrDeviceProfile is { UseShared: false })
             {
-                createdDeviceProfilePreset = accountManager.CreateDeviceProfilePreset(pendingQrDeviceProfile.Snapshot, pendingQrDeviceProfile.GeneratedUtcTicks, null);
-                accountToSave.DeviceProfileDynamicEnabled        = true;
-                accountToSave.DeviceProfilePresetId              = createdDeviceProfilePreset.Id;
-                accountToSave.DeviceProfileLastGeneratedUtcTicks = pendingQrDeviceProfile.GeneratedUtcTicks;
+                var existingPreset = accountManager.FindDeviceProfilePreset(pendingQrDeviceProfile.PresetId);
+                if (existingPreset == null)
+                    createdDeviceProfilePreset = accountManager.CreateDeviceProfilePreset(pendingQrDeviceProfile.Snapshot, pendingQrDeviceProfile.GeneratedUtcTicks, null);
 
-                Log.Information
-                (
-                    existingAccount == null
-                        ? "[LoginWorkflow] 扫码成功后创建正式预设并绑定新账号, 账号={Account}, PresetId={PresetId}, DeviceIdPrefix={DeviceIdPrefix}"
-                        : "[LoginWorkflow] 扫码成功后创建正式预设并重新绑定已有账号, 账号={Account}, PresetId={PresetId}, DeviceIdPrefix={DeviceIdPrefix}",
-                    accountToSave.UserName,
-                    createdDeviceProfilePreset.Id,
-                    GetDeviceIdPrefix(pendingQrDeviceProfile.Snapshot)
-                );
+                var targetPreset = existingPreset ?? createdDeviceProfilePreset!;
+
+                accountToSave.DeviceProfileDynamicEnabled        = true;
+                accountToSave.DeviceProfilePresetId              = targetPreset.Id;
+                accountToSave.DeviceProfileLastGeneratedUtcTicks = pendingQrDeviceProfile.GeneratedUtcTicks > 0
+                                                                        ? pendingQrDeviceProfile.GeneratedUtcTicks
+                                                                        : targetPreset.GeneratedUtcTicks;
+
+                if (existingPreset == null)
+                {
+                    Log.Information
+                    (
+                        existingAccount == null
+                            ? "[LoginWorkflow] 扫码成功后创建正式预设并绑定新账号, 账号={Account}, PresetId={PresetId}, DeviceIdPrefix={DeviceIdPrefix}"
+                            : "[LoginWorkflow] 扫码成功后创建正式预设并重新绑定已有账号, 账号={Account}, PresetId={PresetId}, DeviceIdPrefix={DeviceIdPrefix}",
+                        accountToSave.UserName,
+                        targetPreset.Id,
+                        GetDeviceIdPrefix(pendingQrDeviceProfile.Snapshot)
+                    );
+                }
+                else
+                {
+                    Log.Information
+                    (
+                        "[LoginWorkflow] 扫码成功后沿用既有账号独立预设, 账号={Account}, PresetId={PresetId}, SourceAccountId={SourceAccountId}, DeviceIdPrefix={DeviceIdPrefix}",
+                        accountToSave.UserName,
+                        targetPreset.Id,
+                        pendingQrDeviceProfile.SourceAccountId,
+                        GetDeviceIdPrefix(pendingQrDeviceProfile.Snapshot)
+                    );
+                }
             }
             else if (pendingQrDeviceProfile is { UseShared: true })
             {

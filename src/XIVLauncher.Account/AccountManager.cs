@@ -484,6 +484,48 @@ public class AccountManager
     }
 
     /// <summary>
+    ///     获取当前拥有独立设备预设的账号，用于扫码登录时沿用既有机器码。
+    /// </summary>
+    public IReadOnlyList<XIVAccount> GetIndependentDeviceProfileAccounts() =>
+        Accounts.Where(account => account.DeviceProfileDynamicEnabled
+                                  && !string.IsNullOrWhiteSpace(account.DeviceProfilePresetId)
+                                  && FindDeviceProfilePreset(account.DeviceProfilePresetId) != null)
+                .OrderBy(account => account.SortOrder)
+                .ThenBy(account => account.DisplayName, StringComparer.Ordinal)
+                .ToArray();
+
+    /// <summary>
+    ///     按账号 ID 读取其当前独立设备预设，不触发轮换。
+    /// </summary>
+    public ResolvedDeviceProfile? ResolveStoredIndependentDeviceProfile(string? accountId)
+    {
+        if (string.IsNullOrWhiteSpace(accountId))
+            return null;
+
+        var account = Accounts.FirstOrDefault(existing => string.Equals(existing.ID, accountId, StringComparison.Ordinal));
+        if (account is not { DeviceProfileDynamicEnabled: true })
+            return null;
+
+        var preset = FindDeviceProfilePreset(account.DeviceProfilePresetId);
+        if (preset == null)
+            return null;
+
+        var generatedUtcTicks = account.DeviceProfileLastGeneratedUtcTicks > 0
+                                    ? account.DeviceProfileLastGeneratedUtcTicks
+                                    : preset.GeneratedUtcTicks;
+
+        return new ResolvedDeviceProfile
+        (
+            preset.ToSnapshot(),
+            preset.Id,
+            true,
+            account.IsDeviceProfileRotation,
+            NormalizeDeviceProfileRotationDays(account.DeviceProfileRotationDays),
+            generatedUtcTicks
+        );
+    }
+
+    /// <summary>
     ///     更新账号的设备预设开关和轮换策略
     /// </summary>
     /// <param name="account">目标账号</param>

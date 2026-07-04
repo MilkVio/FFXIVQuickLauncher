@@ -96,12 +96,15 @@ internal sealed class NewAccountDeviceProfileCoordinator
         }
 
         var configuredNewAccount = CreateIndependentDeviceProfileDraft(pendingNewAccount);
+        configuredNewAccount.DeviceProfilePresetId              = preparation.PendingQrDeviceProfile.PresetId ?? string.Empty;
         configuredNewAccount.DeviceProfileLastGeneratedUtcTicks = preparation.PendingQrDeviceProfile.GeneratedUtcTicks;
+        configuredNewAccount.IsDeviceProfileRotation            = preparation.ResolvedDeviceProfile.IsRotationEnabled;
+        configuredNewAccount.DeviceProfileRotationDays          = preparation.ResolvedDeviceProfile.RotationDays;
 
         var resolvedDeviceProfile = new ResolvedDeviceProfile
         (
             preparation.PendingQrDeviceProfile.Snapshot,
-            null,
+            preparation.PendingQrDeviceProfile.PresetId,
             true,
             configuredNewAccount.IsDeviceProfileRotation,
             configuredNewAccount.DeviceProfileRotationDays,
@@ -133,7 +136,9 @@ internal sealed class NewAccountDeviceProfileCoordinator
             );
         }
 
-        switch (request.Interaction.PromptQrLoginDeviceProfileChoice())
+        var choice = request.Interaction.PromptQrLoginDeviceProfileChoice(accountManager.GetIndependentDeviceProfileAccounts());
+
+        switch (choice.Choice)
         {
             case NewAccountDeviceProfileChoice.UseShared:
             {
@@ -146,6 +151,42 @@ internal sealed class NewAccountDeviceProfileCoordinator
                 );
 
                 Log.Information("[LoginWorkflow] 二维码登录选择共享设备画像");
+                return new DeviceProfilePreparation
+                (
+                    resolvedDeviceProfile,
+                    null,
+                    true,
+                    true,
+                    pendingQrDeviceProfile
+                );
+            }
+
+            case NewAccountDeviceProfileChoice.UseExistingIndependent:
+            {
+                var resolvedDeviceProfile = accountManager.ResolveStoredIndependentDeviceProfile(choice.AccountId);
+                if (resolvedDeviceProfile == null)
+                {
+                    Log.Warning("[LoginWorkflow] 二维码登录选择的账号独立设备画像已不可用, AccountId={AccountId}", choice.AccountId);
+                    return null;
+                }
+
+                var pendingQrDeviceProfile = new PendingQrDeviceProfile
+                (
+                    resolvedDeviceProfile.Snapshot,
+                    false,
+                    resolvedDeviceProfile.LastGeneratedUtcTicks,
+                    resolvedDeviceProfile.PresetId,
+                    choice.AccountId
+                );
+
+                Log.Information
+                (
+                    "[LoginWorkflow] 二维码登录沿用账号独立设备画像, AccountId={AccountId}, PresetId={PresetId}, DeviceIdPrefix={DeviceIdPrefix}",
+                    choice.AccountId,
+                    resolvedDeviceProfile.PresetId,
+                    GetDeviceIdPrefix(resolvedDeviceProfile.Snapshot)
+                );
+
                 return new DeviceProfilePreparation
                 (
                     resolvedDeviceProfile,
@@ -244,7 +285,9 @@ internal sealed record PendingQrDeviceProfile
 (
     DeviceProfileSnapshot Snapshot,
     bool                  UseShared,
-    long                  GeneratedUtcTicks
+    long                  GeneratedUtcTicks,
+    string?               PresetId        = null,
+    string?               SourceAccountId = null
 );
 
 internal sealed record DeviceProfilePreparation
