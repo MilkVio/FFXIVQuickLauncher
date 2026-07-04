@@ -281,6 +281,16 @@ public sealed class LauncherSettingsV3 : IAccountSettingsStore
     }
 
     /// <summary>
+    ///     全局开关：为 true 时跳过所有账号的机器码轮换（保留每账号 IsDeviceProfileRotation 字段不变，
+    ///     关闭此开关后恢复原有的按账号轮换行为）
+    /// </summary>
+    public bool DisableAllDeviceProfileRotation
+    {
+        get;
+        set => Set(ref field, value);
+    }
+
+    /// <summary>
     ///     凭据存储类型
     /// </summary>
     public CredType CredType

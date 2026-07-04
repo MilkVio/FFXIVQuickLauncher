@@ -947,8 +947,11 @@ public class AccountManager
         account.DeviceProfileHostName   = string.Empty;
     }
 
-    private static bool ShouldRotateDeviceProfile(XIVAccount account, DateTimeOffset nowUtc)
+    private bool ShouldRotateDeviceProfile(XIVAccount account, DateTimeOffset nowUtc)
     {
+        if (setting.DisableAllDeviceProfileRotation)
+            return false;
+
         if (!account.DeviceProfileDynamicEnabled || !account.IsDeviceProfileRotation)
             return false;
 

@@ -91,6 +91,12 @@ public sealed class SettingsWindowViewModel : INotifyPropertyChanged
         set => SetProperty(ref field, value);
     }
 
+    public bool DisableAllDeviceProfileRotation
+    {
+        get;
+        set => SetProperty(ref field, value);
+    }
+
     public decimal? DalamudInjectionDelayMs
     {
         get;
@@ -264,6 +270,7 @@ public sealed class SettingsWindowViewModel : INotifyPropertyChanged
         KeepPatches                                 = App.Settings.KeepPatches;
         RequireDeviceProfileSetupForNewAccountLogin = App.Settings.RequireDeviceProfileSetupForNewLogin;
         DeviceProfileDebugEnabled                   = App.Settings.DeviceProfileDebugEnabled;
+        DisableAllDeviceProfileRotation             = App.Settings.DisableAllDeviceProfileRotation;
         DalamudInjectionDelayMs                     = App.Settings.DalamudInjectionDelayMS;
         ManualInjectDelayMs                         = App.Settings.ManualInjectDelayMs;
         UseEntryPointLoadMethod                     = App.Settings.DalamudLoadMethod == DalamudLoadMethod.EntryPoint;
@@ -333,6 +340,7 @@ public sealed class SettingsWindowViewModel : INotifyPropertyChanged
                 settings.KeepPatches                          = KeepPatches;
                 settings.RequireDeviceProfileSetupForNewLogin = RequireDeviceProfileSetupForNewAccountLogin;
                 settings.DeviceProfileDebugEnabled            = DeviceProfileDebugEnabled;
+                settings.DisableAllDeviceProfileRotation      = DisableAllDeviceProfileRotation;
                 settings.DalamudEnabled                       = EnableHooks;
                 settings.DalamudInjectionDelayMS              = DalamudInjectionDelayMs ?? 0;
                 settings.ManualInjectDelayMs                  = ManualInjectDelayMs     ?? 0;
