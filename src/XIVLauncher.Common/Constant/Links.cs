@@ -2,13 +2,15 @@
 
 public static class Links
 {
-    public const string REPO_URL = "https://github.com/AtmoOmen/FFXIVQuickLauncher";
+    public const string REPO_URL = "https://github.com/MilkVio/FFXIVQuickLauncher";
 
     public const string DISCORD_URL = "https://discord.gg/MDvv8Ejntw";
 
     public const string GITHUB_PROXY_BASE_URL = "https://gh.atmoomen.top/";
 
     public const string GITHUB_API_BASE_URL = "https://api.github.com/";
+
+    public const string LAUNCHER_GITHUB_PROXY_BASE_URL = "";
 
     public const string DALAMUD_RUNTIME_INFO_URL = $"{GITHUB_PROXY_BASE_URL}raw.githubusercontent.com/Dalamud-DailyRoutines/XLCNSoilAssets/master/runtimeInfo";
 

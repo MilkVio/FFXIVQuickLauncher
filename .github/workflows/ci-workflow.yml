@@ -1,8 +1,18 @@
 name: Build XIVLauncher
-on: [push, pull_request]
+
+on:
+  push:
+    branches:
+      - Violet
+    tags:
+      - '*'
+  pull_request:
+    branches:
+      - Violet
+  workflow_dispatch:
 
 concurrency:
-  group: ${{ github.workflow }}
+  group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -25,11 +35,6 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 10.0.x
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
 
       - name: Restore Nuget Packages
         run: |
@@ -55,33 +60,16 @@ jobs:
       - name: Generate Hashes File
         run: .\scripts\CreateHashList.ps1 .\src\bin\win-x64
 
-      - name: Velopack Build and Upload
+      - name: Velopack Build and GitHub Release
         id: build-velopack
         env:
           GH_TOKEN: ${{ github.token }}
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: |
           $refver = $env:GITHUB_REF -replace '.*/'
-          echo "::set-output name=version::$refver"
+          echo "version=$refver" >> $env:GITHUB_OUTPUT
 
           cd src\
-          .\..\scripts\ci-velopack-upload.ps1
-
-      - name: Purge CF cache after R2 upload
-        if: success()
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ZONE_ID: ${{ secrets.CLOUDFLARE_ZONE_ID }}
-        shell: pwsh
-        run: |
-          $body = '{"files":["https://xl-dis.atmoomen.top/releases.win.json","https://xl-dis.atmoomen.top/RELEASES"]}'
-          Invoke-RestMethod -Uri "https://api.cloudflare.com/client/v4/zones/$env:CLOUDFLARE_ZONE_ID/purge_cache" `
-            -Method Post `
-            -Headers @{ Authorization = "Bearer $env:CLOUDFLARE_API_TOKEN" } `
-            -ContentType 'application/json' `
-            -Body $body
-          Write-Host "Purged: /releases.win.json, /RELEASES"
+          .\..\scripts\ci-github-release.ps1
 
   build:
     name: Build on Windows

@@ -1,7 +1,6 @@
 ﻿using System.Windows;
 using Serilog;
 using Velopack;
-using Velopack.Sources;
 using XIVLauncher.Common.Constant;
 using XIVLauncher.Common.Http;
 using XIVLauncher.Settings;
@@ -23,8 +22,6 @@ internal class UpdateOrchestrator
         Action?          beforeShowChangelog = null
     )
     {
-        _ = downloadPrerelease;
-
         try
         {
             var updateOptions = new UpdateOptions
@@ -33,9 +30,11 @@ internal class UpdateOrchestrator
                 AllowVersionDowngrade = false
             };
 
-            var updateSource = new SimpleWebSource
+            var updateSource = new GitHubSource
             (
-                Links.LAUNCHER_DISTRIBUTE_BASE_URL,
+                Links.REPO_URL,
+                downloadPrerelease,
+                Links.LAUNCHER_GITHUB_PROXY_BASE_URL,
                 new XLHttpClientFileDownloader()
             );
 

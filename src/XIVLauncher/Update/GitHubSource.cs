@@ -14,13 +14,13 @@ public class GitHubSource
 (
     string           repoUrl,
     bool             prerelease,
-    string           proxyBaseUrl,
+    string?          proxyBaseUrl,
     IFileDownloader? downloader = null
 )
     : IUpdateSource
 {
     private readonly IFileDownloader            downloader  = downloader ?? new XLHttpClientFileDownloader();
-    private readonly string                     proxyUrl    = proxyBaseUrl.TrimEnd('/');
+    private readonly string                     proxyUrl    = proxyBaseUrl?.TrimEnd('/') ?? string.Empty;
     private readonly Uri                        repoUri     = new(repoUrl);
     private readonly Dictionary<string, string> packageUrls = new(StringComparer.OrdinalIgnoreCase);
 
@@ -115,7 +115,7 @@ public class GitHubSource
         const int PER_PAGE = 5;
         const int PAGE     = 1;
         var       path     = $"repos{repoUri.AbsolutePath}/releases?per_page={PER_PAGE}&page={PAGE}";
-        var       url      = $"{proxyUrl}/{Links.GITHUB_API_BASE_URL.TrimEnd('/')}/{path}";
+        var       url      = ToDownloadUrl($"{Links.GITHUB_API_BASE_URL.TrimEnd('/')}/{path}");
         var       json     = await downloader.DownloadString(url, CreateHeaders("application/vnd.github.v3+json")).ConfigureAwait(false);
         var       releases = JsonConvert.DeserializeObject<List<GithubRelease>>(json, JsonSettings);
 
@@ -137,7 +137,7 @@ public class GitHubSource
 
         foreach (var release in releases)
         {
-            var match = Regex.Match(release.Name ?? string.Empty, @"\d+.\d+.\d+", RegexOptions.Compiled);
+            var match = Regex.Match(release.Name ?? string.Empty, @"\d+\.\d+\.\d+(?:\.\d+)?", RegexOptions.Compiled);
 
             if (!match.Success)
             {
@@ -167,17 +167,23 @@ public class GitHubSource
         if (asset == null || string.IsNullOrWhiteSpace(asset.BrowserDownloadUrl))
             return null;
 
-        return ToProxyUrl(asset.BrowserDownloadUrl);
+        return ToDownloadUrl(asset.BrowserDownloadUrl);
     }
 
-    private string ToProxyUrl(string url) =>
-        url.StartsWith($"{proxyUrl}/", StringComparison.OrdinalIgnoreCase) ? url : $"{proxyUrl}/{url}";
+    private string ToDownloadUrl(string url)
+    {
+        if (string.IsNullOrWhiteSpace(proxyUrl))
+            return url;
+
+        return url.StartsWith($"{proxyUrl}/", StringComparison.OrdinalIgnoreCase) ? url : $"{proxyUrl}/{url}";
+    }
 
     private Dictionary<string, string> CreateHeaders(string accept)
     {
         var headers = new Dictionary<string, string>
         {
-            ["Accept"] = accept
+            ["Accept"]     = accept,
+            ["User-Agent"] = "XIVLauncherCN-Violet"
         };
 
         return headers;
