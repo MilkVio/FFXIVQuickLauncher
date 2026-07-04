@@ -31,6 +31,10 @@ if ([string]::IsNullOrWhiteSpace($refver)) {
     throw 'GITHUB_REF is empty; cannot determine release version.'
 }
 
+if ($refver -notmatch '^\d+\.\d+\.\d+$') {
+    throw "Release tag '$refver' must be a three-part SemVer version like 2.3.5."
+}
+
 Write-Step "Release version: $refver"
 
 if (-not (Get-Command vpk -ErrorAction SilentlyContinue)) {

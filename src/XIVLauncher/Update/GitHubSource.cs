@@ -137,7 +137,7 @@ public class GitHubSource
 
         foreach (var release in releases)
         {
-            var match = Regex.Match(release.Name ?? string.Empty, @"\d+\.\d+\.\d+(?:\.\d+)?", RegexOptions.Compiled);
+            var match = Regex.Match(release.Name ?? string.Empty, @"\d+\.\d+\.\d+", RegexOptions.Compiled);
 
             if (!match.Success)
             {
