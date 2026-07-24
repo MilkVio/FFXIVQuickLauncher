@@ -6,8 +6,8 @@ using XIVLauncher.Account;
 using XIVLauncher.Account.Cred;
 using XIVLauncher.Common;
 using XIVLauncher.CompanionApp;
-using XIVLauncher.Login;
 using XIVLauncher.Dalamud;
+using XIVLauncher.Login;
 using XIVLauncher.Settings.Converters;
 using XIVLauncher.Xaml;
 
@@ -217,6 +217,19 @@ public sealed class LauncherSettingsV3 : IAccountSettingsStore
         get;
         set => Set(ref field, value);
     }
+
+    #endregion
+
+    #region 超域旅行配置
+
+    /// <summary>
+    ///     超域旅行完成后是否自动启动游戏
+    /// </summary>
+    public bool DCTravelAutoStartGameOnComplete
+    {
+        get;
+        set => Set(ref field, value);
+    } = true;
 
     #endregion
 
