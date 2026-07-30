@@ -1,7 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
 using XIVLauncher.Account;
-using XIVLauncher.Login;
+using XIVLauncher.Login.Workflow;
 
 namespace XIVLauncher.Windows;
 

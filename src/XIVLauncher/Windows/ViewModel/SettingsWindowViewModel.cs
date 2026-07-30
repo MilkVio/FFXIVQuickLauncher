@@ -9,6 +9,7 @@ using XIVLauncher.Account.Cred;
 using XIVLauncher.Common;
 using XIVLauncher.Common.Constant;
 using XIVLauncher.Common.Util;
+using XIVLauncher.Login.WeGame;
 using XIVLauncher.CompanionApp;
 using XIVLauncher.Dalamud;
 using XIVLauncher.Windows.Services;
@@ -38,7 +39,7 @@ public sealed partial class SettingsWindowViewModel : ObservableObject
     public partial string PatchPath { get; set; } = string.Empty;
 
     [ObservableProperty]
-    public partial string WeGameLauncherPath { get; set; } = string.Empty;
+    public partial string WeGamePath { get; set; } = string.Empty;
 
     [ObservableProperty]
     public partial bool AskBeforePatching { get; set; }
@@ -119,21 +120,6 @@ public sealed partial class SettingsWindowViewModel : ObservableObject
             return;
 
         SelectedCredType = value.Value;
-    }
-
-    [ObservableProperty]
-    public partial bool UseEntryPointLoadMethod { get; set; } = true;
-
-    public bool UseDllInjectLoadMethod
-    {
-        get => !UseEntryPointLoadMethod;
-        set
-        {
-            if (value == UseDllInjectLoadMethod)
-                return;
-
-            UseEntryPointLoadMethod = !value;
-        }
     }
 
     [ObservableProperty]
@@ -260,7 +246,7 @@ public sealed partial class SettingsWindowViewModel : ObservableObject
 
         GamePath           = App.Settings.GamePath?.FullName ?? string.Empty;
         PatchPath          = patchPath.FullName;
-        WeGameLauncherPath = App.Settings.WeGameLauncherPath ?? string.Empty;
+        WeGamePath         = App.Settings.WeGamePath?.FullName ?? string.Empty;
 
         AskBeforePatching                           = App.Settings.AskBeforePatchInstall;
         ExitLauncherAfterGameExit                   = App.Settings.ExitLauncherWhenGameExit;
@@ -270,8 +256,6 @@ public sealed partial class SettingsWindowViewModel : ObservableObject
         DisableAllDeviceProfileRotation             = App.Settings.DisableAllDeviceProfileRotation;
         DalamudInjectionDelayMs                     = App.Settings.DalamudInjectionDelayMS;
         ManualInjectDelayMs                         = App.Settings.ManualInjectDelayMs;
-        UseEntryPointLoadMethod                     = App.Settings.DalamudLoadMethod == DalamudLoadMethod.EntryPoint;
-        UseDllInjectLoadMethod                      = App.Settings.DalamudLoadMethod == DalamudLoadMethod.DllInject;
         EnableHooks                                 = App.Settings.DalamudEnabled;
         EnableDcTravel                              = true;
         LaunchArgs                                  = App.Settings.AdditionalLaunchArgs ?? string.Empty;
@@ -288,7 +272,8 @@ public sealed partial class SettingsWindowViewModel : ObservableObject
 
     public async Task<bool> SaveToSettingsAsync()
     {
-        if (string.Equals(GamePath, PatchPath, StringComparison.OrdinalIgnoreCase))
+        if (string.Equals(GamePath, PatchPath, StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(WeGamePath, PatchPath, StringComparison.OrdinalIgnoreCase))
         {
             _dialogService.ShowMessage
             (
@@ -300,10 +285,23 @@ public sealed partial class SettingsWindowViewModel : ObservableObject
             return false;
         }
 
-        var gamePath            = !string.IsNullOrWhiteSpace(GamePath) ? new DirectoryInfo(GamePath) : null!;
+        if (!string.IsNullOrWhiteSpace(WeGamePath) &&
+            (!WeGamePathValidator.IsValidGameRoot(WeGamePath) ||
+             !WeGamePathValidator.IsValidSdologinDir(WeGamePathValidator.DeriveSdologinDir(WeGamePath))))
+        {
+            _dialogService.ShowMessage
+            (
+                "未找到 WeGame 游戏标记或 sdologin.exe, 请重新选择游戏根目录。",
+                "XIVLauncher 错误",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error
+            );
+            return false;
+        }
+
+        var gamePath            = !string.IsNullOrWhiteSpace(GamePath) ? new DirectoryInfo(GamePath) : null;
         var patchPath           = !string.IsNullOrWhiteSpace(PatchPath) ? new DirectoryInfo(PatchPath) : null!;
         var companionAppEntries = CompanionAppEntries.ToList();
-        var dalamudLoadMethod   = App.Settings.DalamudLoadMethod;
         var dpiAwareness        = (DPIAwareness)DpiAwarenessIndex;
         var speedLimitBytes     = (long)((SpeedLimitMb ?? 0) * BYTES_TO_MB);
 
@@ -341,11 +339,11 @@ public sealed partial class SettingsWindowViewModel : ObservableObject
                 settings.DalamudEnabled                       = EnableHooks;
                 settings.DalamudInjectionDelayMS              = DalamudInjectionDelayMs ?? 0;
                 settings.ManualInjectDelayMs                  = ManualInjectDelayMs     ?? 0;
-                settings.DalamudLoadMethod                    = dalamudLoadMethod;
+                settings.DalamudLoadMethod                    = DalamudLoadMethod.EntryPoint;
                 settings.AdditionalLaunchArgs                 = LaunchArgs;
                 settings.DPIAwareness                         = dpiAwareness;
                 settings.SpeedLimitBytes                      = speedLimitBytes;
-                settings.WeGameLauncherPath                   = WeGameLauncherPath;
+                settings.WeGamePath                           = string.IsNullOrWhiteSpace(WeGamePath) ? null : new DirectoryInfo(WeGamePath);
                 settings.CredType                             = credTypeApplyResult.AppliedCredType;
             }
         );

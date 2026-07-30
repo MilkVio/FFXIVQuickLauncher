@@ -2,7 +2,6 @@ using System.Diagnostics;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
-using XIVLauncher.Common.Constant;
 using XIVLauncher.Windows.ViewModel.Main;
 
 namespace XIVLauncher.Windows.Main;
@@ -69,6 +68,15 @@ public partial class LoginCardControl
     private void SettingsButton_OnClick(object sender, RoutedEventArgs e) =>
         SettingsRequested?.Invoke(this, e);
 
+    private void GameMaintenanceButton_OnClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button { ContextMenu: { } contextMenu } button)
+            return;
+
+        contextMenu.PlacementTarget = button;
+        contextMenu.IsOpen         = true;
+    }
+
     // ── 卡片快捷键 ──
 
     private void Card_KeyDown(object sender, KeyEventArgs e)
@@ -90,9 +98,4 @@ public partial class LoginCardControl
             Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
     }
 
-    private void PayPageButton_OnClick(object sender, RoutedEventArgs e) =>
-        Process.Start(new ProcessStartInfo(Links.SDO_PAYMENT_URL) { UseShellExecute = true });
-
-    private void ShoppingPageButton_OnClick(object sender, RoutedEventArgs e) =>
-        Process.Start(new ProcessStartInfo(Links.SDO_SHOPPING_URL) { UseShellExecute = true });
 }

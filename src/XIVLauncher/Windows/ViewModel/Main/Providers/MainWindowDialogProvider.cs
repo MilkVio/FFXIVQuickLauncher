@@ -1,7 +1,7 @@
 using System.Windows;
 using Microsoft.WindowsAPICodePack.Dialogs;
 using XIVLauncher.Account;
-using XIVLauncher.Login;
+using XIVLauncher.Login.Workflow;
 
 namespace XIVLauncher.Windows.ViewModel.Main.Providers;
 

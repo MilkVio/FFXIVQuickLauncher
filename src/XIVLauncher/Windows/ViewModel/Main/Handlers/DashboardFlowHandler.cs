@@ -1,6 +1,11 @@
+using System.Diagnostics;
 using Serilog;
 using XIVLauncher.Common;
+using XIVLauncher.Common.Game;
 using XIVLauncher.Login;
+using XIVLauncher.Login.Channels;
+using XIVLauncher.Login.Client;
+using XIVLauncher.Login.Models;
 using XIVLauncher.Windows.Services;
 using XIVLauncher.Windows.ViewModel.Main.Models;
 
@@ -17,6 +22,38 @@ internal sealed class DashboardFlowHandler
             return;
 
         vm.IsEnabled = false;
+
+        if (action == LoginAfterAction.Start && vm.DashboardPage.IsGameUpdateAvailable)
+        {
+            _ = Task.Run
+            (async () =>
+                {
+                    try
+                    {
+                        await vm.GameLaunchFlow.InstallGamePatchAsync(true).ConfigureAwait(false);
+                    }
+                    catch (Exception ex)
+                    {
+                        CustomMessageBox.Builder
+                                        .NewFromUnexpectedException(ex, "Dashboard/UpdateGame")
+                                        .WithParentWindow(vm.Window)
+                                        .Show();
+                    }
+                    finally
+                    {
+                        vm.Window.Dispatcher.Invoke
+                        (() =>
+                            {
+                                vm.IsEnabled = true;
+                                vm.Activate();
+                                vm.SwitchCard(LoginCardType.Dashboard, false);
+                            }
+                        );
+                    }
+                }
+            );
+            return;
+        }
 
         _ = Task.Run
         (async () =>
@@ -74,6 +111,29 @@ internal sealed class DashboardFlowHandler
         var dialogService = new DialogService(vm.Window);
         dialogService.ShowAccountDeviceProfileSettings(account, vm.AccountManager);
         vm.AccountSwitcher.RefreshEntries(vm.AccountManager.CurrentAccountID, false);
+    }
+
+    public async Task HandleOpenAuthenticatedSiteAsync(string serviceUrl, string appId)
+    {
+        try
+        {
+            var oauth = vm.CurrentGameLaunchContext?.LoginResult.OAuthLogin
+                        ?? throw new InvalidOperationException("当前登录上下文不存在");
+            if (string.IsNullOrWhiteSpace(oauth.TGT) || string.IsNullOrWhiteSpace(oauth.Guid) || oauth.DeviceProfile == null)
+                throw new InvalidOperationException("当前登录会话不支持网页单点登录");
+
+            var loginContext = new LoginChannelContext(oauth.DeviceProfile);
+            var loginUri     = await loginContext.GetWebLoginUriAsync(oauth.TGT, oauth.Guid, serviceUrl, appId);
+            Process.Start(new ProcessStartInfo(loginUri.AbsoluteUri) { UseShellExecute = true });
+        }
+        catch (Exception ex)
+        {
+            CustomMessageBox.Builder
+                            .NewFrom($"无法打开已登录的官方网站: {ex.Message}")
+                            .WithCaption("打开官方网站失败")
+                            .WithParentWindow(vm.Window)
+                            .Show();
+        }
     }
 
     public void HandleOpenDCTravel()
@@ -165,8 +225,12 @@ internal sealed class DashboardFlowHandler
         }
     }
 
-    public void RefreshGameVersion() =>
-        vm.DashboardPage.GameVersion = App.Settings.GamePath != null
-                                           ? Repository.Ffxiv.GetVer(App.Settings.GamePath)
-                                           : string.Empty;
+    public void RefreshGameVersion()
+    {
+        var accountType = vm.CurrentGameLaunchContext?.AccountType
+                          ?? vm.AccountManager.CurrentAccount?.AccountType
+                          ?? vm.LoginPage.LoginTypeOption.LoginType.ToAccountType(XIVAccountType.Sdo);
+        var gamePath = App.Settings.GetGamePath(accountType);
+        vm.DashboardPage.GameVersion = gamePath != null ? Repository.Ffxiv.GetVer(gamePath) : string.Empty;
+    }
 }

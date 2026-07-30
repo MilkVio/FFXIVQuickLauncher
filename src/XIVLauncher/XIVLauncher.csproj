@@ -1,9 +1,9 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
         <Product>XIVLauncherCN (Violet)</Product>
         <AssemblyTitle>XIVLauncherCN (Violet)</AssemblyTitle>
         <Description>Custom launcher for the most critically acclaimed MMO's CN server.</Description>
-        <VersionPrefix>2.3.8</VersionPrefix>
+        <VersionPrefix>2.3.9</VersionPrefix>
     </PropertyGroup>
 
     <PropertyGroup>

@@ -1,9 +1,13 @@
 using System.ComponentModel;
 using System.Diagnostics;
+using System.IO;
 using System.Windows;
 using XIVLauncher.Account;
 using XIVLauncher.Account.DeviceProfiles;
 using XIVLauncher.Login;
+using XIVLauncher.Login.Models;
+using XIVLauncher.Login.WeGame;
+using XIVLauncher.Login.Workflow;
 using XIVLauncher.Windows.Services;
 
 namespace XIVLauncher.Windows.ViewModel.Main.Providers;
@@ -98,11 +102,11 @@ public sealed class MainWindowLoginInteraction
             )
         );
 
-    public string? GetSavedWeGameLauncherPath() =>
-        App.Settings.WeGameLauncherPath;
+    public string? GetSavedWeGamePath() =>
+        App.Settings.WeGamePath?.FullName;
 
-    public void SaveWeGameLauncherPath(string path) =>
-        App.Settings.WeGameLauncherPath = path;
+    public void SaveWeGamePath(string path) =>
+        App.Settings.WeGamePath = new DirectoryInfo(path);
 
     public string? PromptWeGameInstallDirectory(string? currentPath) =>
         window.Dispatcher.Invoke(MainWindowDialogProvider.PromptWeGameInstallDirectory);

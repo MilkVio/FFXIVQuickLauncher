@@ -4,6 +4,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using XIVLauncher.Common.Constant;
 using XIVLauncher.Login;
+using XIVLauncher.Login.Models;
 
 namespace XIVLauncher.Windows.ViewModel.Main;
 
@@ -13,6 +14,7 @@ public sealed partial class DashboardViewModel : ObservableObject
     private readonly Action                   requestSwitchAccountAction;
     private readonly Action                   requestOpenDCTravelAction;
     private readonly Action                   requestOpenDeviceProfileAction;
+    private readonly Func<string, string, Task> requestOpenAuthenticatedSiteAction;
     private readonly Action<LoginArea>        requestSetAreaAction;
 
     public DashboardViewModel
@@ -21,14 +23,16 @@ public sealed partial class DashboardViewModel : ObservableObject
         Action                   requestSwitchAccountAction,
         Action                   requestOpenDCTravelAction,
         Action                   requestOpenDeviceProfileAction,
+        Func<string, string, Task> requestOpenAuthenticatedSiteAction,
         Action<LoginArea>        requestSetAreaAction
     )
     {
-        this.requestStartGameAction         = requestStartGameAction;
-        this.requestSwitchAccountAction     = requestSwitchAccountAction;
-        this.requestOpenDCTravelAction      = requestOpenDCTravelAction;
-        this.requestOpenDeviceProfileAction = requestOpenDeviceProfileAction;
-        this.requestSetAreaAction           = requestSetAreaAction;
+        this.requestStartGameAction             = requestStartGameAction;
+        this.requestSwitchAccountAction         = requestSwitchAccountAction;
+        this.requestOpenDCTravelAction          = requestOpenDCTravelAction;
+        this.requestOpenDeviceProfileAction     = requestOpenDeviceProfileAction;
+        this.requestOpenAuthenticatedSiteAction = requestOpenAuthenticatedSiteAction;
+        this.requestSetAreaAction               = requestSetAreaAction;
 
         Areas = [];
     }
@@ -46,6 +50,12 @@ public sealed partial class DashboardViewModel : ObservableObject
 
     [ObservableProperty]
     public partial string GameVersion { get; set; } = string.Empty;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(StartGameButtonText))]
+    public partial bool IsGameUpdateAvailable { get; set; }
+
+    public string StartGameButtonText => IsGameUpdateAvailable ? "更新游戏" : "启动游戏";
 
     [ObservableProperty]
     public partial string AreaName { get; set; } = string.Empty;
@@ -118,12 +128,12 @@ public sealed partial class DashboardViewModel : ObservableObject
         requestOpenDeviceProfileAction();
 
     [RelayCommand]
-    private void OpenPayment() =>
-        Process.Start(new ProcessStartInfo(Links.SDO_PAYMENT_URL) { UseShellExecute = true });
+    private Task OpenPayment() =>
+        requestOpenAuthenticatedSiteAction(Links.SDO_PAYMENT_URL, SdoInfos.PAYMENT_APP_ID);
 
     [RelayCommand]
-    private void OpenShop() =>
-        Process.Start(new ProcessStartInfo(Links.SDO_SHOPPING_URL) { UseShellExecute = true });
+    private Task OpenShop() =>
+        requestOpenAuthenticatedSiteAction(Links.SDO_SHOPPING_URL, SdoInfos.SHOPPING_APP_ID);
 
     [RelayCommand]
     private void OpenOfficialAccount() =>

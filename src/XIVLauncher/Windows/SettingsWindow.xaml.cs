@@ -1,6 +1,7 @@
 ﻿using System.Diagnostics;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
 using Serilog;
@@ -52,7 +53,8 @@ public partial class SettingsWindow
 
     private void CompanionAppListView_OnMouseUp(object sender, MouseButtonEventArgs e)
     {
-        if (e.ChangedButton != MouseButton.Left)
+        if (e.ChangedButton != MouseButton.Left ||
+            FindAncestor<ButtonBase>((DependencyObject)e.OriginalSource) is not null)
             return;
 
         ViewModel.EditSelectedCompanionAppCommand.Execute(null);
@@ -75,6 +77,20 @@ public partial class SettingsWindow
 
     private void SharedDeviceProfileButton_Click(object sender, RoutedEventArgs e) =>
         ViewModel.OpenSharedDeviceProfile();
+
+    private void FirstTimeSetupButton_Click(object sender, RoutedEventArgs e)
+    {
+        var setupWindow = new FirstTimeSetup
+        {
+            Owner                 = this,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+        };
+
+        setupWindow.ShowDialog();
+
+        if (setupWindow.WasCompleted)
+            ViewModel.ReloadFromSettings();
+    }
 
     private static T? FindAncestor<T>(DependencyObject? current) where T : DependencyObject
     {

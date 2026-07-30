@@ -7,6 +7,7 @@ using System.Text.Json;
 using System.Windows;
 using System.Windows.Threading;
 using Serilog;
+using XIVLauncher.Account;
 using XIVLauncher.Account.DeviceProfiles;
 using XIVLauncher.Common.Game;
 using XIVLauncher.Common.Game.Exceptions;
@@ -15,6 +16,8 @@ using XIVLauncher.Dalamud;
 using XIVLauncher.GamePatchV3.Update;
 using XIVLauncher.Login;
 using XIVLauncher.Login.Channels;
+using XIVLauncher.Login.Client;
+using XIVLauncher.Login.Models;
 using XIVLauncher.Support;
 using XIVLauncher.Windows.GameClientFiles;
 using XIVLauncher.Windows.ViewModel.Main.Services;
@@ -37,6 +40,13 @@ internal sealed class GameLaunchFlowHandler
     )
     {
         var loginResult = gameLaunchContext.LoginResult;
+        var gamePath    = App.Settings.GetGamePath(gameLaunchContext.AccountType);
+
+        if (gamePath?.Exists != true)
+        {
+            CustomMessageBox.Show("当前账号渠道的游戏目录无效, 请在设置中重新选择", "XIVLauncherCN (Violet)", MessageBoxButton.OK, MessageBoxImage.Error, parentWindow: vm.Window);
+            return null;
+        }
 
         SyncGameLaunchContextAreaFromAccount(gameLaunchContext);
 
@@ -47,7 +57,7 @@ internal sealed class GameLaunchFlowHandler
         stopwatch.Start();
         var dalamudSession = App.Dalamud.CreateLauncher
         (
-            App.Settings.GamePath,
+            gamePath,
             new DalamudLaunchOptions
             (
                 App.Settings.DalamudLoadMethod,
@@ -59,14 +69,13 @@ internal sealed class GameLaunchFlowHandler
         );
 
         var dalamudOk = false;
-        EnsureDalamudCompatibility();
 
-        if (App.Settings.DalamudEnabled && !forceNoDalamud)
+        if (App.Settings.DalamudEnabled && !forceNoDalamud && EnsureDalamudCompatibility())
         {
             if (EnsureDalamudUpdate
                 (
                     dalamudSession,
-                    App.Settings.GamePath,
+                    gamePath,
                     false
                 ) is not { } dalamudUpdateResult)
                 return null;
@@ -101,12 +110,12 @@ internal sealed class GameLaunchFlowHandler
             gameLaunchContext.Area.AreaConfigUpload,
             Convert.ToBase64String(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(gameLaunchContext.Areas))),
             App.Settings.AdditionalLaunchArgs,
-            App.Settings.GamePath,
+            gamePath,
             App.Settings.EncryptArgumentsV2,
             App.Settings.DPIAwareness
         );
 
-        Troubleshooting.LogTroubleshooting();
+        Troubleshooting.LogTroubleshooting(gamePath);
 
         if (launched == null)
         {
@@ -301,7 +310,8 @@ internal sealed class GameLaunchFlowHandler
                      UniqueID = "0"
                  },
                  vm.LoginPage.Area!,
-                 vm.LoginPage.LoginAreas
+                 vm.LoginPage.LoginAreas,
+                 XIVAccountType.Sdo
              ),
              false,
              false,
@@ -316,6 +326,13 @@ internal sealed class GameLaunchFlowHandler
     public async Task<bool> LaunchGameWithRetryLoop(GameLaunchContext gameLaunchContext, LoginAfterAction action)
     {
         var loginResult = gameLaunchContext.LoginResult;
+        var gamePath    = App.Settings.GetGamePath(gameLaunchContext.AccountType);
+
+        if (gamePath?.Exists != true)
+        {
+            CustomMessageBox.Show("当前账号渠道的游戏目录无效, 请在设置中重新选择", "XIVLauncherCN (Violet)", MessageBoxButton.OK, MessageBoxImage.Error, parentWindow: vm.Window);
+            return false;
+        }
 
         if (CustomMessageBox.AssertOrShowError
             (
@@ -330,7 +347,7 @@ internal sealed class GameLaunchFlowHandler
         {
             var checkResult = await GameUpdater.Check
                               (
-                                  App.Settings.GamePath,
+                                  gamePath,
                                   false,
                                   CancellationToken.None
                               ).ConfigureAwait(false);
@@ -340,7 +357,7 @@ internal sealed class GameLaunchFlowHandler
                 if (!ConfirmGamePatchInstall())
                     return false;
 
-                if (!await InstallGamePatchAsync().ConfigureAwait(false))
+                if (!await InstallGamePatchAsync(false).ConfigureAwait(false))
                 {
                     Log.Error("patchSuccess != true");
                     return false;
@@ -604,13 +621,14 @@ internal sealed class GameLaunchFlowHandler
 
     #region Dalamud 与补丁
 
-    private void EnsureDalamudCompatibility()
+    private bool EnsureDalamudCompatibility()
     {
         var dalamudCompatCheck = new DalamudCompatibilityCheck();
 
         try
         {
             dalamudCompatCheck.EnsureCompatibility();
+            return true;
         }
         catch (IDalamudCompatibilityCheck.NoRedistsException ex)
         {
@@ -624,6 +642,7 @@ internal sealed class GameLaunchFlowHandler
                 MessageBoxImage.Exclamation,
                 parentWindow: vm.Window
             );
+            return false;
         }
         catch (IDalamudCompatibilityCheck.ArchitectureNotSupportedException ex)
         {
@@ -637,6 +656,7 @@ internal sealed class GameLaunchFlowHandler
                 MessageBoxImage.Exclamation,
                 parentWindow: vm.Window
             );
+            return false;
         }
     }
 
@@ -693,10 +713,31 @@ internal sealed class GameLaunchFlowHandler
         return selfPatchAsk != MessageBoxResult.No;
     }
 
-    private async Task<bool> InstallGamePatchAsync()
+    public async Task<bool> InstallGamePatchAsync(bool confirmInstallation)
     {
-        var result = await gameClientFileTaskService.RunAsync(GameClientFileTaskKind.Update).ConfigureAwait(false);
-        return result.Status == GameClientFileTaskResultStatus.Success;
+        if (confirmInstallation && !ConfirmGamePatchInstall())
+            return false;
+
+        await vm.GameUpdateMonitor.BeginUpdateAsync().ConfigureAwait(false);
+        var succeeded = false;
+
+        try
+        {
+            var accountType = vm.CurrentGameLaunchContext?.AccountType
+                              ?? vm.AccountManager.CurrentAccount?.AccountType
+                              ?? vm.LoginPage.LoginTypeOption.LoginType.ToAccountType(XIVAccountType.Sdo);
+            var result = await gameClientFileTaskService.RunAsync(GameClientFileTaskKind.Update, accountType).ConfigureAwait(false);
+            succeeded = result.Status == GameClientFileTaskResultStatus.Success;
+
+            if (succeeded)
+                vm.Window.Dispatcher.Invoke(vm.DashboardFlow.RefreshGameVersion);
+
+            return succeeded;
+        }
+        finally
+        {
+            vm.GameUpdateMonitor.CompleteUpdate(succeeded);
+        }
     }
 
     #endregion

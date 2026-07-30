@@ -11,6 +11,8 @@ using XIVLauncher.Common.Constant;
 using XIVLauncher.Common.Game;
 using XIVLauncher.Common.Http.Site;
 using XIVLauncher.Login;
+using XIVLauncher.Login.Models;
+using XIVLauncher.Login.WeGame;
 using XIVLauncher.Support;
 using XIVLauncher.Windows.ViewModel.Main;
 using XIVLauncher.Windows.ViewModel.Main.Models;
@@ -53,10 +55,10 @@ public partial class MainWindow
 
         Closed  += Model.OnWindowClosed;
         Closing += Model.OnWindowClosing;
-
         Model.Activate += () => Dispatcher.Invoke
         (() =>
             {
+                Model.GameUpdateMonitor.QueueCheck();
                 Show();
                 Activate();
                 Focus();
@@ -107,7 +109,9 @@ public partial class MainWindow
 
         Model.LoginPage.IsFastLogin = App.Settings.FastLogin;
 
-        if (App.Settings.GamePath?.Exists != true)
+        if (App.Settings.GamePath?.Exists != true
+            && (!WeGamePathValidator.IsValidGameRoot(App.Settings.WeGamePath?.FullName)
+                || !WeGamePathValidator.IsValidSdologinDir(WeGamePathValidator.DeriveSdologinDir(App.Settings.WeGamePath!.FullName))))
         {
             var setup = new FirstTimeSetup();
             setup.ShowDialog();
@@ -122,6 +126,8 @@ public partial class MainWindow
             Model.Settings.ReloadFromSettings();
         }
 
+        Model.GameUpdateMonitor.Start();
+
         Task.Run
         (async () =>
             {
@@ -135,7 +141,9 @@ public partial class MainWindow
                 );
 
                 await RequestHeadlinesRefreshAsync().ConfigureAwait(false);
-                Troubleshooting.LogTroubleshooting();
+                var accountType = App.AccountManager.CurrentAccount?.AccountType
+                                  ?? App.Settings.SelectedLoginType.ToAccountType(XIVAccountType.Sdo);
+                Troubleshooting.LogTroubleshooting(App.Settings.GetGamePath(accountType));
             }
         );
 
@@ -147,6 +155,7 @@ public partial class MainWindow
         ShowCredTypeRecoveryMessage();
 
         everShown = true;
+        Activated += (_, _) => Model.GameUpdateMonitor.QueueCheck();
     }
 
     private void OnSettingsRequested(object? sender, EventArgs e)

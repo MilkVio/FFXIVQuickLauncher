@@ -10,6 +10,9 @@ using XIVLauncher.Common.Game;
 using XIVLauncher.Common.Game.Exceptions;
 using XIVLauncher.GamePatchV3.Models;
 using XIVLauncher.Login;
+using XIVLauncher.Login.Exceptions;
+using XIVLauncher.Login.Models;
+using XIVLauncher.Login.Workflow;
 using XIVLauncher.Support;
 using XIVLauncher.Windows.GameClientFiles;
 using XIVLauncher.Windows.ViewModel.Main.Models;
@@ -72,9 +75,11 @@ internal sealed class LoginFlowHandler
         vm.IsLoggingIn               = true;
         vm.IsEnabled                 = false;
         isLoginCanceledByUser        = false;
+        isWeGameRetryingAfterThirdPartyFailure = false;
         vm.LoginPage.IsQrCodeExpired = false;
         loginCancelSource?.Dispose();
-        loginCancelSource = new();
+        var cancellationSource = new CancellationTokenSource();
+        loginCancelSource = cancellationSource;
         vm.LoginPage.RefreshCommandStates();
         vm.InjectPage.RefreshCommandStates();
 
@@ -83,50 +88,74 @@ internal sealed class LoginFlowHandler
         vm.SwitchCard(loginType == LoginType.QRCode ? LoginCardType.ScanQRCode : LoginCardType.Logining, false);
 
         _ = Task.Run
-        (
-            async () =>
-            {
-                try
-                {
-                    await LoginAsync(loginType, username, password, quickLoginEnabled, readWeGameInfo, action).ConfigureAwait(false);
-                }
-                catch (Exception ex)
-                {
-                    vm.Window.Dispatcher.Invoke
-                    (() =>
-                        {
-                            CustomMessageBox.Builder
-                                            .NewFromUnexpectedException(ex, "CreateLoginHandler/Task")
-                                            .WithParentWindow(vm.Window)
-                                            .Show();
-                        }
-                    );
-                }
-                finally
-                {
-                    vm.Window.Dispatcher.Invoke
-                    (() =>
-                        {
-                            loginCancelSource?.Dispose();
-                            loginCancelSource = null;
-
-                            var nextCard = loginCardAfterCompletion ?? currentCard;
-                            loginCardAfterCompletion = null;
-                            vm.SwitchCard(nextCard, false);
-
-                            vm.IsLoggingIn = false;
-                            vm.IsEnabled   = true;
-                            vm.LoginPage.RefreshCommandStates();
-                            vm.InjectPage.RefreshCommandStates();
-
-                            vm.ReloadHeadlines();
-                            vm.Activate();
-                        }
-                    );
-                }
-            },
-            LoginCancellationToken
+        (() =>
+            RunLoginAsync
+            (
+                loginType,
+                username,
+                password,
+                quickLoginEnabled,
+                readWeGameInfo,
+                action,
+                currentCard,
+                cancellationSource
+            )
         );
+    }
+
+    private async Task RunLoginAsync
+    (
+        LoginType              loginType,
+        string                 username,
+        string                 password,
+        bool                   quickLoginEnabled,
+        bool                   readWeGameInfo,
+        LoginAfterAction       action,
+        LoginCardType          currentCard,
+        CancellationTokenSource cancellationSource
+    )
+    {
+        try
+        {
+            await LoginAsync(loginType, username, password, quickLoginEnabled, readWeGameInfo, action, cancellationSource).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            vm.Window.Dispatcher.Invoke
+            (() =>
+                {
+                    CustomMessageBox.Builder
+                                    .NewFromUnexpectedException(ex, "RunLoginAsync")
+                                    .WithParentWindow(vm.Window)
+                                    .Show();
+                }
+            );
+        }
+        finally
+        {
+            vm.Window.Dispatcher.Invoke
+            (() =>
+                {
+                    if (!ReferenceEquals(loginCancelSource, cancellationSource))
+                        return;
+
+                    loginCancelSource = null;
+                    cancellationSource.Dispose();
+
+                    var nextCard = loginCardAfterCompletion ?? currentCard;
+                    loginCardAfterCompletion = null;
+                    vm.SwitchCard(nextCard, false);
+
+                    vm.IsLoggingIn = false;
+                    vm.IsEnabled   = true;
+                    vm.LoginPage.RefreshCommandStates();
+                    vm.InjectPage.RefreshCommandStates();
+
+                    vm.ReloadHeadlines();
+                    vm.Activate();
+                }
+            );
+        }
     }
 
     public void CancelLogin()
@@ -148,14 +177,13 @@ internal sealed class LoginFlowHandler
         string?          inputPassword,
         bool             quickLoginEnabled,
         bool             readWeGameInfo,
-        LoginAfterAction action
+        LoginAfterAction action,
+        CancellationTokenSource cancellationSource
     )
     {
         if (isLoginCanceledByUser)
             return;
-
-        ProblemCheck.RunCheck(vm.Window);
-
+        
         if (!TryResolvePatchPath())
             return;
 
@@ -182,12 +210,11 @@ internal sealed class LoginFlowHandler
             Username                             = username,
             Password                             = inputPassword,
             QuickLoginEnabled                    = quickLoginEnabled,
-            ReadWeGameInfo                       = readWeGameInfo,
             ForceWeGameTokenRecapture            = loginType == LoginType.WeGame && readWeGameInfo,
             Action                               = action,
             CurrentArea                          = vm.LoginPage.Area,
             LoginAreas                           = vm.LoginPage.LoginAreas,
-            LoginCancellationTokenSource         = loginCancelSource ?? new CancellationTokenSource(),
+            LoginCancellationTokenSource         = cancellationSource,
             LoginSessionRefreshSink              = dcTravelRuntimeService,
             Interaction                          = new MainWindowLoginInteraction(vm.Window, vm.LoginPage, dialogProvider),
             RequireDeviceProfileSetupForNewLogin = App.Settings.RequireDeviceProfileSetupForNewLogin,
@@ -207,8 +234,8 @@ internal sealed class LoginFlowHandler
                 ex,
                 loginType,
                 username,
-                workflowResult?.UsedSavedWeGameToken == true,
-                action
+                action,
+                cancellationSource
             ).ConfigureAwait(false);
             return;
         }
@@ -256,8 +283,8 @@ internal sealed class LoginFlowHandler
         Exception        ex,
         LoginType        loginType,
         string           username,
-        bool             usedSavedWeGameToken,
-        LoginAfterAction action
+        LoginAfterAction action,
+        CancellationTokenSource cancellationSource
     )
     {
         Log.Error(ex, "[MainWindow] 尝试登录至游戏失败");
@@ -267,14 +294,6 @@ internal sealed class LoginFlowHandler
             Log.Information("[MainWindow] 用户取消了登录操作, 正常返回");
             return;
         }
-
-        await ClearInvalidSavedWeGameTokenAsync
-        (
-            ex,
-            loginType,
-            username,
-            usedSavedWeGameToken
-        ).ConfigureAwait(false);
 
         var msgbox = new CustomMessageBox.Builder()
                      .WithCaption("登录异常")
@@ -305,7 +324,7 @@ internal sealed class LoginFlowHandler
                     else
                     {
                         isWeGameRetryingAfterThirdPartyFailure = true;
-                        await LoginAsync(loginType, username, null, false, true, action).ConfigureAwait(false);
+                        await LoginAsync(loginType, username, null, false, true, action, cancellationSource).ConfigureAwait(false);
                         return;
                     }
 
@@ -357,7 +376,8 @@ internal sealed class LoginFlowHandler
 
             case UnsupportedGameVersionException:
             {
-                if (Repository.Ffxiv.IsBaseVer(App.Settings.GamePath))
+                var accountType = loginType.ToAccountType(vm.AccountManager.CurrentAccount?.AccountType ?? XIVAccountType.Sdo);
+                if (Repository.Ffxiv.IsBaseVer(App.Settings.GetGamePath(accountType)))
                 {
                     vm.IsLoggingIn = false;
                     _              = HandleGameClientFileTask(GameClientFileTaskKind.FreshInstall);
@@ -370,7 +390,8 @@ internal sealed class LoginFlowHandler
 
             case InvalidDataException invalidDataException when invalidDataException.Message.Contains("当前游戏数据版本", StringComparison.Ordinal):
             {
-                if (Repository.Ffxiv.IsBaseVer(App.Settings.GamePath))
+                var accountType = loginType.ToAccountType(vm.AccountManager.CurrentAccount?.AccountType ?? XIVAccountType.Sdo);
+                if (Repository.Ffxiv.IsBaseVer(App.Settings.GetGamePath(accountType)))
                 {
                     vm.IsLoggingIn = false;
                     _              = HandleGameClientFileTask(GameClientFileTaskKind.FreshInstall);
@@ -429,33 +450,6 @@ internal sealed class LoginFlowHandler
         msgbox.Show();
     }
 
-    private async Task ClearInvalidSavedWeGameTokenAsync
-    (
-        Exception ex,
-        LoginType loginType,
-        string    username,
-        bool      usedSavedWeGameToken
-    )
-    {
-        if (ex is not LoginException)
-            return;
-
-        if (loginType != LoginType.WeGame || !usedSavedWeGameToken)
-            return;
-
-        var account = vm.AccountManager.Accounts.FirstOrDefault
-        (item => item.AccountType == XIVAccountType.WeGame && string.Equals(item.WeGameLoginAccount, username, StringComparison.Ordinal)
-        );
-
-        if (account?.WeGameQuickLoginSecret == null)
-            return;
-
-        await Task.Delay(1, LoginCancellationToken);
-
-        account.WeGameQuickLoginSecret = null;
-        vm.AccountManager.Save(account);
-    }
-
     private bool ConfirmGameClientFileTask(GameClientFileTaskKind kind)
     {
         string message;
@@ -463,11 +457,6 @@ internal sealed class LoginFlowHandler
 
         switch (kind)
         {
-            case GameClientFileTaskKind.Update:
-                message = "即将检查游戏更新, 并下载安装可能存在的更新文件, 是否要开始?";
-                title   = "更新游戏文件";
-                break;
-
             case GameClientFileTaskKind.Repair:
                 message = "即将扫描游戏文件完整性, 并下载安装存在异常的文件、归档多余的文件, 是否要开始?";
                 title   = "修复游戏文件";
@@ -627,7 +616,9 @@ internal sealed class LoginFlowHandler
 
         try
         {
-            result = await gameClientFileTaskService.RunAsync(kind).ConfigureAwait(false);
+            var accountType = vm.CurrentGameLaunchContext?.AccountType
+                              ?? vm.LoginPage.LoginTypeOption.LoginType.ToAccountType(vm.AccountManager.CurrentAccount?.AccountType ?? XIVAccountType.Sdo);
+            result = await gameClientFileTaskService.RunAsync(kind, accountType).ConfigureAwait(false);
         }
         finally
         {

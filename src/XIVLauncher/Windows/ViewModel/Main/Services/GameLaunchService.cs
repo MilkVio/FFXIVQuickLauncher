@@ -1,11 +1,13 @@
-﻿using System.Collections.Concurrent;
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.IO;
 using System.Windows;
 using Serilog;
+using XIVLauncher.Common.Game;
 using XIVLauncher.Common.Http;
 using XIVLauncher.CompanionApp;
 using XIVLauncher.Dalamud;
+using XIVLauncher.Login.Models;
 using XIVLauncher.Support;
 
 namespace XIVLauncher.Windows.ViewModel.Main.Services;
@@ -94,15 +96,12 @@ public sealed class GameLaunchService
 
     public bool InjectGameAndCompanionApp(int gamePid, bool noThird = false, bool noPlugins = false)
     {
-        var gameExePath   = Process.GetProcessById(gamePid).MainModule?.FileName;
-        var gameExeFolder = Path.GetDirectoryName(gameExePath);
-        var gamePath      = new DirectoryInfo(gameExeFolder!).Parent;
-
-        if (gamePath == null)
+        using var gameProcess = Process.GetProcessById(gamePid);
+        if (gameProcess.HasExited)
         {
             CustomMessageBox.Show
             (
-                "无法解析游戏目录, 注入失败",
+                "游戏进程已经退出, 注入失败",
                 "XIVLauncherCN (Violet)",
                 MessageBoxButton.OK,
                 MessageBoxImage.Error,
@@ -111,23 +110,34 @@ public sealed class GameLaunchService
             return false;
         }
 
-        EnsureDalamudCompatibility();
+        var accountType = App.AccountManager.CurrentAccount?.AccountType
+                          ?? App.Settings.SelectedLoginType.ToAccountType(XIVAccountType.Sdo);
+        var gamePath = App.Settings.GetGamePath(accountType);
+
+        if (gamePath?.Exists != true)
+        {
+            CustomMessageBox.Show("当前账号渠道的游戏目录无效, 请在设置中重新选择", "XIVLauncherCN (Violet)", MessageBoxButton.OK, MessageBoxImage.Error, parentWindow: window);
+            return false;
+        }
+
+        if (!EnsureDalamudCompatibility())
+            return false;
 
         var dalamudSession = App.Dalamud.CreateLauncher
         (
             gamePath,
             new DalamudLaunchOptions
             (
-                DalamudLoadMethod.DllInject,
+                DalamudLoadMethod.EntryPoint,
                 (int)App.Settings.DalamudInjectionDelayMS,
                 false,
                 noPlugins,
                 noThird
             )
         );
-        var dalamudOk = EnsureDalamudUpdate(dalamudSession, App.Settings.GamePath, true);
+        var dalamudOk = EnsureDalamudUpdate(dalamudSession, gamePath, true);
 
-        Troubleshooting.LogTroubleshooting();
+        Troubleshooting.LogTroubleshooting(gamePath);
 
         if (!dalamudOk)
         {
@@ -145,13 +155,14 @@ public sealed class GameLaunchService
         return true;
     }
 
-    public void EnsureDalamudCompatibility()
+    public bool EnsureDalamudCompatibility()
     {
         var dalamudCompatCheck = new DalamudCompatibilityCheck();
 
         try
         {
             dalamudCompatCheck.EnsureCompatibility();
+            return true;
         }
         catch (IDalamudCompatibilityCheck.NoRedistsException ex)
         {
@@ -165,6 +176,7 @@ public sealed class GameLaunchService
                 MessageBoxImage.Exclamation,
                 parentWindow: window
             );
+            return false;
         }
         catch (IDalamudCompatibilityCheck.ArchitectureNotSupportedException ex)
         {
@@ -178,6 +190,7 @@ public sealed class GameLaunchService
                 MessageBoxImage.Exclamation,
                 parentWindow: window
             );
+            return false;
         }
     }
 
