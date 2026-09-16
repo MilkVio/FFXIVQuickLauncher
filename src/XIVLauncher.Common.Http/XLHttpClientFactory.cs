@@ -8,7 +8,8 @@ public static class XLHttpClientFactory
     (
         TimeSpan             connectTimeout,
         int                  maxConnectionsPerServer,
-        DecompressionMethods automaticDecompression
+        DecompressionMethods automaticDecompression,
+        bool                 useLoginProxy = false
     )
     {
         var handler = new SocketsHttpHandler
@@ -26,6 +27,9 @@ public static class XLHttpClientFactory
             ResponseDrainTimeout           = TimeSpan.FromSeconds(2),
             AutomaticDecompression         = automaticDecompression,
         };
+
+        if (useLoginProxy)
+            handler.Proxy = LoginProxyPool.Shared.WebProxy;
 
         return new HttpClient(new Http11FallbackHandler(handler));
     }

@@ -627,6 +627,26 @@
                             </StackPanel>
                         </materialDesign:Card>
 
+                        <TextBlock Style="{StaticResource SectionTitleStyle}" Text="代理设置" />
+                        <materialDesign:Card Style="{StaticResource SettingCardStyle}">
+                            <StackPanel>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Margin="0,0,24,0">
+                                        <TextBlock Style="{StaticResource SettingTitleStyle}" Text="登陆代理" />
+                                        <TextBlock Style="{StaticResource SettingDescriptionStyle}"
+                                                   Text="登录与服务器列表等请求经由自建代理出口，补丁与更新下载保持直连" />
+                                    </StackPanel>
+                                    <Button Grid.Column="1" MinWidth="100" VerticalAlignment="Center"
+                                            Click="ProxyManagerButton_Click"
+                                            Style="{StaticResource ThemeOutlinedButtonStyle}" Content="代理管理" />
+                                </Grid>
+                            </StackPanel>
+                        </materialDesign:Card>
+
                         <TextBlock Style="{StaticResource SectionTitleStyle}" Text="伴随程序" />
                         <materialDesign:Card Style="{StaticResource SettingCardStyle}">
                             <StackPanel>

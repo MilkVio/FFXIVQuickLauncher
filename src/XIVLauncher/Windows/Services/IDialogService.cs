@@ -1,5 +1,6 @@
 using System.Windows;
 using XIVLauncher.Account;
+using XIVLauncher.Common.Http;
 using XIVLauncher.CompanionApp;
 
 namespace XIVLauncher.Windows.Services;
@@ -34,6 +35,10 @@ internal interface IDialogService
     bool ShowAccountDeviceProfileSettings(XIVAccount account, AccountManager accountManager);
 
     bool ShowSharedDeviceProfileSettings(AccountManager accountManager);
+
+    void ShowProxyManager();
+
+    LoginProxyEntry? ShowProxyEntryEdit(LoginProxyEntry? entry = null);
 
     void ShowChangelog(string version);
 }

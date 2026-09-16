@@ -7,6 +7,7 @@ using XIVLauncher.Account;
 using XIVLauncher.Account.Cred;
 using XIVLauncher.Common;
 using XIVLauncher.Common.Game;
+using XIVLauncher.Common.Http;
 using XIVLauncher.CompanionApp;
 using XIVLauncher.Dalamud;
 using XIVLauncher.Login.Models;
@@ -330,6 +331,55 @@ public sealed class LauncherSettingsV3 : IAccountSettingsStore
         get;
         set => Set(ref field, value);
     } = CredType.WindowsCredManager;
+
+    #endregion
+
+    #region 代理配置
+
+    /// <summary>
+    ///     是否启用登陆代理
+    /// </summary>
+    public bool LoginProxyEnabled
+    {
+        get;
+        set => Set(ref field, value);
+    }
+
+    /// <summary>
+    ///     代理条目列表
+    /// </summary>
+    public List<LoginProxyEntry> LoginProxyEntries
+    {
+        get;
+        set => Set(ref field, value);
+    } = [];
+
+    /// <summary>
+    ///     代理入口选取策略
+    /// </summary>
+    public LoginProxyPickMode LoginProxyPickMode
+    {
+        get;
+        set => Set(ref field, value);
+    } = LoginProxyPickMode.Sticky;
+
+    /// <summary>
+    ///     手动策略下指定的条目 ID
+    /// </summary>
+    public string? LoginProxyManualEntryId
+    {
+        get;
+        set => Set(ref field, value);
+    }
+
+    /// <summary>
+    ///     粘滞策略记录的上次可用条目 ID
+    /// </summary>
+    public string? LoginProxyLastWorkingEntryId
+    {
+        get;
+        set => Set(ref field, value);
+    }
 
     #endregion
 

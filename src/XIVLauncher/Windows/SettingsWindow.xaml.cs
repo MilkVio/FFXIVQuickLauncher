@@ -1,4 +1,4 @@
-﻿using System.Diagnostics;
+using System.Diagnostics;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -77,6 +77,9 @@ public partial class SettingsWindow
 
     private void SharedDeviceProfileButton_Click(object sender, RoutedEventArgs e) =>
         ViewModel.OpenSharedDeviceProfile();
+
+    private void ProxyManagerButton_Click(object sender, RoutedEventArgs e) =>
+        ViewModel.OpenProxyManager();
 
     private void FirstTimeSetupButton_Click(object sender, RoutedEventArgs e)
     {

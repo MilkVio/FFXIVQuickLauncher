@@ -7,7 +7,7 @@ namespace XIVLauncher.Login.Models;
 
 public class LoginArea
 {
-    private static readonly HttpClient Client = XLHttpClientFactory.Create(TimeSpan.FromSeconds(30), int.MaxValue, DecompressionMethods.None);
+    private static readonly HttpClient Client = XLHttpClientFactory.Create(TimeSpan.FromSeconds(30), int.MaxValue, DecompressionMethods.None, true);
 
     static LoginArea() =>
         Client.Timeout = TimeSpan.FromSeconds(30);

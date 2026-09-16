@@ -1,5 +1,6 @@
 using System.Windows;
 using XIVLauncher.Account;
+using XIVLauncher.Common.Http;
 using XIVLauncher.CompanionApp;
 
 namespace XIVLauncher.Windows.Services;
@@ -93,6 +94,21 @@ internal sealed class DialogService
         var window = new AccountDeviceProfileWindow(accountManager);
         PrepareOwner(window);
         return window.ShowDialog() == true;
+    }
+
+    public void ShowProxyManager()
+    {
+        var window = new ProxyManagerWindow();
+        PrepareOwner(window);
+        window.ShowDialog();
+    }
+
+    public LoginProxyEntry? ShowProxyEntryEdit(LoginProxyEntry? entry = null)
+    {
+        var window = new ProxyEntryEditWindow(entry);
+        PrepareOwner(window);
+        window.ShowDialog();
+        return window.Result;
     }
 
     public void ShowChangelog(string version)

@@ -10,6 +10,7 @@ using XIVLauncher.Common.Util;
 using XIVLauncher.CompanionApp;
 using XIVLauncher.Dalamud;
 using XIVLauncher.Login.WeGame;
+using XIVLauncher.Support;
 using XIVLauncher.Windows.Services;
 
 namespace XIVLauncher.Windows.ViewModel;
@@ -252,6 +253,9 @@ public sealed partial class SettingsWindowViewModel : ObservableObject
     public void OpenSharedDeviceProfile() =>
         _dialogService.ShowSharedDeviceProfileSettings(App.AccountManager);
 
+    public void OpenProxyManager() =>
+        _dialogService.ShowProxyManager();
+
     public void ReloadFromSettings()
     {
         var patchPath = Paths.ResolvePatchPath(App.Settings.PatchPath, Paths.RoamingPath);
@@ -369,6 +373,8 @@ public sealed partial class SettingsWindowViewModel : ObservableObject
         );
 
         SelectedCredType = credTypeApplyResult.AppliedCredType;
+
+        LoginProxySetup.ApplyFromSettings();
 
         SettingsSaved?.Invoke(this, EventArgs.Empty);
         return true;

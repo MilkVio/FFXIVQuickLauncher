@@ -7,6 +7,7 @@ using XIVLauncher.Account;
 using XIVLauncher.Dalamud;
 using XIVLauncher.Settings;
 using XIVLauncher.Startup;
+using XIVLauncher.Support;
 using XIVLauncher.Windows;
 using XIVLauncher.Windows.Main;
 
@@ -111,6 +112,8 @@ public partial class App
     private void OnStartupCompleted()
     {
         isUseFullExceptionHandler = true;
+
+        LoginProxySetup.ApplyFromSettings();
 
         mainWindow = new MainWindow();
         mainWindow.Initialize();

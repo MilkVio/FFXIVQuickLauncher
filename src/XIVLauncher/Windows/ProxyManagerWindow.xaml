@@ -1,0 +1,181 @@
+<components:ChromeWindow
+    x:Class="XIVLauncher.Windows.ProxyManagerWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:components="clr-namespace:XIVLauncher.Xaml.Components"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:viewModel="clr-namespace:XIVLauncher.Windows.ViewModel"
+    Title="代理管理"
+    Width="760"
+    MaxHeight="760"
+    ResizeMode="NoResize"
+    SizeToContent="Height"
+    WindowStartupLocation="CenterOwner"
+    Background="{DynamicResource MaterialDesign.Brush.Background}"
+    Icon="pack://application:,,,/Resources/dalamud_icon.ico"
+    TextElement.Foreground="{DynamicResource MaterialDesign.Brush.Foreground}"
+    d:DataContext="{d:DesignInstance viewModel:ProxyManagerWindowViewModel}"
+    mc:Ignorable="d">
+
+    <components:ChromeWindow.Resources>
+        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
+
+        <Style x:Key="ProxyComboBoxStyle" TargetType="ComboBox" BasedOn="{StaticResource MaterialDesignComboBox}">
+            <Setter Property="Foreground" Value="{DynamicResource MaterialDesign.Brush.Foreground}" />
+            <Setter Property="MinWidth" Value="140" />
+        </Style>
+
+        <Style x:Key="RowIconButtonStyle" TargetType="Button" BasedOn="{StaticResource MaterialDesignIconButton}">
+            <Setter Property="Width" Value="32" />
+            <Setter Property="Height" Value="32" />
+            <Setter Property="Padding" Value="4" />
+            <Setter Property="Margin" Value="2,0" />
+        </Style>
+    </components:ChromeWindow.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <components:TitleBar Grid.Row="0" />
+
+        <Grid Grid.Row="1" Margin="32,16,32,24">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <Grid Grid.Row="0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Orientation="Horizontal">
+                    <ToggleButton VerticalAlignment="Center"
+                                  IsChecked="{Binding ProxyEnabled}"
+                                  Style="{StaticResource MaterialDesignSwitchToggleButton}" />
+                    <TextBlock Margin="12,0,0,0" VerticalAlignment="Center"
+                               FontWeight="Medium" Text="启用登陆代理" />
+                </StackPanel>
+
+                <StackPanel Grid.Column="1" Orientation="Horizontal">
+                    <TextBlock Margin="0,0,10,0" VerticalAlignment="Center" Text="选取策略" />
+                    <ComboBox VerticalAlignment="Center"
+                              SelectedIndex="{Binding PickModeIndex}"
+                              Style="{StaticResource ProxyComboBoxStyle}">
+                        <ComboBoxItem Content="粘滞优先" />
+                        <ComboBoxItem Content="随机" />
+                        <ComboBoxItem Content="手动指定" />
+                    </ComboBox>
+                </StackPanel>
+            </Grid>
+
+            <TextBlock Grid.Row="1" Margin="0,8,0,16"
+                       Foreground="{DynamicResource MaterialDesign.Brush.ForegroundLight}"
+                       Text="登录与服务器列表等请求经由以下代理出口，补丁与更新下载保持直连" />
+
+            <Grid Grid.Row="2">
+                <ListBox x:Name="ProxyListBox"
+                         MaxHeight="400"
+                         Background="Transparent"
+                         BorderThickness="0"
+                         ItemsSource="{Binding Entries}"
+                         ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <Grid Margin="0,6">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="110" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+
+                                <CheckBox VerticalAlignment="Center" IsChecked="{Binding Enabled}" />
+
+                                <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center">
+                                    <TextBlock FontWeight="Medium" Text="{Binding Name}" />
+                                    <TextBlock FontSize="12"
+                                               Foreground="{DynamicResource MaterialDesign.Brush.ForegroundLight}"
+                                               Text="{Binding MaskedUrl}" />
+                                </StackPanel>
+
+                                <CheckBox Grid.Column="2" Margin="12,0,0,0"
+                                          VerticalAlignment="Center"
+                                          Content="指定"
+                                          IsChecked="{Binding IsDesignated}"
+                                          Visibility="{Binding DataContext.IsManualMode, RelativeSource={RelativeSource AncestorType=ListBox}, Converter={StaticResource BooleanToVisibilityConverter}}" />
+
+                                <TextBlock Grid.Column="3" Margin="12,0,0,0"
+                                           VerticalAlignment="Center"
+                                           FontSize="12"
+                                           Text="{Binding LatencyText}"
+                                           TextAlignment="Right" />
+
+                                <StackPanel Grid.Column="4" Margin="12,0,0,0" VerticalAlignment="Center" Orientation="Horizontal">
+                                    <Button Command="{Binding DataContext.TestEntryCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
+                                            CommandParameter="{Binding}"
+                                            IsEnabled="{Binding IsNotTesting}"
+                                            Style="{StaticResource RowIconButtonStyle}" ToolTip="测试此代理">
+                                        <materialDesign:PackIcon Width="16" Height="16" Kind="Speedometer" />
+                                    </Button>
+                                    <Button Command="{Binding DataContext.EditEntryCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
+                                            CommandParameter="{Binding}"
+                                            Style="{StaticResource RowIconButtonStyle}" ToolTip="编辑">
+                                        <materialDesign:PackIcon Width="16" Height="16" Kind="PencilOutline" />
+                                    </Button>
+                                    <Button Command="{Binding DataContext.RemoveEntryCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
+                                            CommandParameter="{Binding}"
+                                            Style="{StaticResource RowIconButtonStyle}" ToolTip="删除">
+                                        <materialDesign:PackIcon Width="16" Height="16" Kind="DeleteOutline" />
+                                    </Button>
+                                </StackPanel>
+                            </Grid>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+
+                <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,24"
+                           Foreground="{DynamicResource MaterialDesign.Brush.ForegroundLight}"
+                           Text="暂无代理条目，点击下方按钮添加">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Visibility" Value="Collapsed" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding Entries.Count}" Value="0">
+                                    <Setter Property="Visibility" Value="Visible" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
+            </Grid>
+
+            <Grid Grid.Row="3" Margin="0,16,0,0">
+                <Button HorizontalAlignment="Left"
+                        Command="{Binding AddEntryCommand}"
+                        Content="+ 添加条目"
+                        Style="{StaticResource MaterialDesignOutlinedButton}" />
+
+                <StackPanel HorizontalAlignment="Right" Orientation="Horizontal">
+                    <Button Margin="0,0,10,0"
+                            Command="{Binding TestAllCommand}"
+                            Content="全部测试"
+                            Style="{StaticResource MaterialDesignFlatButton}" />
+                    <Button MinWidth="92"
+                            Click="CloseButton_Click"
+                            Content="关闭"
+                            Style="{StaticResource MaterialDesignRaisedButton}" />
+                </StackPanel>
+            </Grid>
+        </Grid>
+    </Grid>
+</components:ChromeWindow>

@@ -3,6 +3,7 @@ using Newtonsoft.Json;
 using Serilog;
 using XIVLauncher.Account.DeviceProfiles;
 using XIVLauncher.Common.Constant;
+using XIVLauncher.Common.Http;
 using XIVLauncher.Common.Util;
 using XIVLauncher.Login.Client;
 using XIVLauncher.Login.Exceptions;
@@ -29,7 +30,8 @@ public sealed class LoginChannelContext
         var loginHandler = new HttpClientHandler
         {
             UseCookies      = true,
-            CookieContainer = loginCookies
+            CookieContainer = loginCookies,
+            Proxy           = LoginProxyPool.Shared.WebProxy
         };
 
         loginHttpClient = new HttpClient(loginHandler);
@@ -459,16 +461,19 @@ public sealed class LoginChannelContext
     )
     {
         Exception? lastException = null;
+        var        maxAttempts   = LoginProxyPool.Shared.IsActive ? 3 : 2;
 
-        for (var attempt = 0; attempt < 2; attempt++)
+        for (var attempt = 0; attempt < maxAttempts; attempt++)
         {
             try
             {
                 using var response = await SendSdoHttpRequestAsync(HttpMethod.Get, endPoint, paras, tgt, appId, cancellationToken).ConfigureAwait(false);
                 var       reply    = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-                return DeserializeLoginResponse(endPoint, reply);
+                var       result   = DeserializeLoginResponse(endPoint, reply);
+                LoginProxyPool.Shared.ReportCurrentSuccess();
+                return result;
             }
-            catch (Exception ex) when (ex is not OperationCanceledException && attempt == 0 && TrySwitchToFallbackDomain(ex))
+            catch (Exception ex) when (ex is not OperationCanceledException && attempt < maxAttempts - 1 && TryRecoverTransport(ex, attempt))
             {
             }
             catch (Exception ex)
@@ -479,6 +484,17 @@ public sealed class LoginChannelContext
         }
 
         throw lastException ?? new InvalidOperationException("Failed to request SDO login endpoint");
+    }
+
+    private bool TryRecoverTransport(Exception ex, int attempt)
+    {
+        if (attempt == 0 && LoginProxyPool.Shared.IsActive && LoginProxyPool.Shared.TryRotateCurrent())
+        {
+            Log.Error(ex, "[LoginChannelContext] 请求发生异常，切换代理入口重试");
+            return true;
+        }
+
+        return TrySwitchToFallbackDomain(ex);
     }
 
     private bool TrySwitchToFallbackDomain(Exception ex)
