@@ -1,10 +1,10 @@
-﻿using System.Windows;
+using System.Windows;
 using Serilog;
 using Velopack;
+using Velopack.Sources;
 using XIVLauncher.Common.Constant;
 using XIVLauncher.Common.Http;
 using XIVLauncher.Settings;
-using XIVLauncher.Support;
 using XIVLauncher.Windows;
 
 namespace XIVLauncher.Update;
@@ -30,13 +30,7 @@ internal class UpdateOrchestrator
                 AllowVersionDowngrade = false
             };
 
-            var updateSource = new GitHubSource
-            (
-                Links.REPO_URL,
-                downloadPrerelease,
-                Links.LAUNCHER_GITHUB_PROXY_BASE_URL,
-                new XLHttpClientFileDownloader()
-            );
+            var updateSource = CreateUpdateSource(downloadPrerelease);
 
             var updateManager = new UpdateManager(updateSource, updateOptions);
             loadingDialog?.SetMessage("正在检查启动器更新...");
@@ -128,11 +122,14 @@ internal class UpdateOrchestrator
         }
     }
 
+    internal static GitHubSource CreateUpdateSource(bool downloadPrerelease, IFileDownloader? downloader = null) =>
+        new(Links.REPO_URL, downloadPrerelease, Links.LAUNCHER_GITHUB_PROXY_BASE_URL, downloader);
+
     internal static string GetUpdateFailureMessage(Exception exception) =>
         exception switch
         {
             TimeoutException timeoutException => timeoutException.Message,
-            Exception when exception.FindHttpRequestException() is { StatusCode: not null } httpRequestException => (int)httpRequestException.StatusCode switch
+            not null when exception.FindHttpRequestException() is { StatusCode: not null } httpRequestException => (int)httpRequestException.StatusCode switch
             {
                 403 or 444 or 522 => $"更新源返回错误状态码 {(int)httpRequestException.StatusCode}{Environment.NewLine}{httpRequestException.Message}",
                 _                 => $"更新请求失败, 状态码 {(int)httpRequestException.StatusCode}{Environment.NewLine}{httpRequestException.Message}"

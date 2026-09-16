@@ -125,7 +125,7 @@ internal sealed class NewAccountDeviceProfileCoordinator
 
     private DeviceProfilePreparation? PrepareQrLogin(LoginWorkflowRequest request, ResolvedLoginState resolvedLoginState)
     {
-        if (!request.RequireDeviceProfileSetupForNewLogin)
+        if (!request.RequireDeviceProfileSetupForQRCodeLogin)
         {
             var resolvedDeviceProfile = accountManager.ResolveDeviceProfile(resolvedLoginState.Username, resolvedLoginState.AccountType);
             return new DeviceProfilePreparation

@@ -295,6 +295,15 @@ public sealed class LauncherSettingsV3 : IAccountSettingsStore
     }
 
     /// <summary>
+    ///     扫码登录前是否需要指定设备信息
+    /// </summary>
+    public bool RequireDeviceProfileSetupForQRCodeLogin
+    {
+        get;
+        set => Set(ref field, value);
+    }
+
+    /// <summary>
     ///     是否在登录请求前显示本次发送的设备画像
     /// </summary>
     public bool DeviceProfileDebugEnabled
@@ -491,6 +500,7 @@ public sealed class LauncherSettingsV3 : IAccountSettingsStore
             var json = File.ReadAllText(sourcePath, Encoding.UTF8);
             settings = JsonSerializer.Deserialize<LauncherSettingsV3>(json, JsonOptions) ?? new LauncherSettingsV3();
             var migrated = settings.MigrateWeGamePath();
+            migrated |= settings.MigrateQrDeviceProfileSetting(json);
             settings.Attach(attachPath);
             if (migrated)
                 settings.Save();
@@ -501,6 +511,20 @@ public sealed class LauncherSettingsV3 : IAccountSettingsStore
             exception = ex;
             return false;
         }
+    }
+
+    private bool MigrateQrDeviceProfileSetting(string json)
+    {
+        using var document = JsonDocument.Parse(json);
+        if (document.RootElement.ValueKind != JsonValueKind.Object ||
+            document.RootElement.EnumerateObject().Any(property =>
+                string.Equals(property.Name, nameof(RequireDeviceProfileSetupForQRCodeLogin), StringComparison.OrdinalIgnoreCase)))
+            return false;
+
+        // Violet 2.3.x used the new-account switch for QR login as well.
+        // Copy it only when the new key is absent; an explicit false must stay false.
+        RequireDeviceProfileSetupForQRCodeLogin = RequireDeviceProfileSetupForNewLogin;
+        return true;
     }
 
     private bool MigrateWeGamePath()

@@ -27,4 +27,8 @@
         <ProjectReference Include="..\XIVLauncher\XIVLauncher.csproj" />
         <ProjectReference Include="..\XIVLauncher.GamePatchV3\XIVLauncher.GamePatchV3.csproj" />
     </ItemGroup>
+
+    <ItemGroup>
+        <None Include="..\XIVLauncher\App.xaml" Link="UiResources\App.xaml" CopyToOutputDirectory="PreserveNewest" />
+    </ItemGroup>
 </Project>

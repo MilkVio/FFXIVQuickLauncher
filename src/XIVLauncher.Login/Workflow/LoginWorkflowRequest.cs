@@ -24,9 +24,11 @@ public sealed class LoginWorkflowRequest
 
     public required ILoginSessionRefreshSink? LoginSessionRefreshSink { get; init; }
 
-    public required ILoginWorkflowInteraction Interaction { get; init; }
+    public required ILoginWorkflowUI Interaction { get; init; }
 
     public required bool RequireDeviceProfileSetupForNewLogin { get; init; }
 
     public required bool DeviceProfileDebugEnabled { get; init; }
+
+    public required bool RequireDeviceProfileSetupForQRCodeLogin { get; init; }
 }

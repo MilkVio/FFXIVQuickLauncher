@@ -7,7 +7,7 @@ using XIVLauncher.Login.Workflow;
 
 namespace XIVLauncher.Login.Client;
 
-public sealed class LoginClient
+public sealed class LoginClient : ILoginClient
 {
     public async Task<LoginResult> LoginAsync(LoginType loginType, LoginRequest request, CancellationToken cancellationToken = default)
     {

@@ -13,10 +13,11 @@ namespace XIVLauncher.Login.Workflow;
 public sealed class LoginWorkflowService
 (
     AccountManager                 accountManager,
-    IWeGameTokenCaptureCoordinator weGameTokenCaptureCoordinator
+    IWeGameTokenCaptureCoordinator weGameTokenCaptureCoordinator,
+    ILoginClient?                  client = null
 )
 {
-    private readonly LoginClient                        loginClient                        = new();
+    private readonly ILoginClient                       loginClient                        = client ?? new LoginClient();
     private readonly SavedAccountLoginResolver          savedAccountLoginResolver          = new(accountManager, weGameTokenCaptureCoordinator);
     private readonly NewAccountDeviceProfileCoordinator newAccountDeviceProfileCoordinator = new(accountManager);
 
@@ -88,6 +89,9 @@ public sealed class LoginWorkflowService
             pendingNewAccount?.DeviceProfileDynamicEnabled == true)
         {
             var oAuthLogin = loginResult.OAuthLogin;
+            if (string.IsNullOrWhiteSpace(oAuthLogin.QuickLoginSecret))
+                throw new InvalidOperationException("扫码登录未返回可保存的快速登录凭据");
+
             loginResult = await LoginAsync
                           (
                               request,
@@ -107,10 +111,7 @@ public sealed class LoginWorkflowService
 
         if (loginResult.State == LoginState.Ok)
         {
-            var loginAccount = loginResult.OAuthLogin?.InputUserID;
-            var existedBefore = !string.IsNullOrEmpty(loginAccount)
-                                    ? accountManager.FindAccount(loginAccount, resolvedLoginState.AccountType) != null
-                                    : accountManager.FindAccount(resolvedLoginState.Username, resolvedLoginState.AccountType) != null;
+            var existedBefore = accountManager.FindAccount(loginResult.OAuthLogin?.InputUserID, resolvedLoginState.AccountType) != null;
 
             var accountToSave = await SaveAccountAsync
                                  (
@@ -132,9 +133,10 @@ public sealed class LoginWorkflowService
                 switch (accountToSave.AccountType)
                 {
                     case XIVAccountType.Sdo
-                        when (accountToSave.QuickLoginEnabled && loginResult.OAuthLogin?.QuickLoginSecret is { Length: > 0 } autoLoginSessionKey):
+                        when (accountToSave.QuickLoginEnabled                                        &&
+                              loginResult.OAuthLogin?.InputUserID is { Length: > 0 } refreshUsername &&
+                              loginResult.OAuthLogin?.QuickLoginSecret is { Length: > 0 } autoLoginSessionKey):
                     {
-                        var refreshUsername     = accountToSave.SdoLoginAccount;
                         var cachedDeviceProfile = deviceProfileSnapshot;
                         refreshGameSessionIdByQuickLoginFunc = async () =>
                         {
@@ -219,7 +221,7 @@ public sealed class LoginWorkflowService
                     qrBytes =>
                     {
                         if (requestLoginType == LoginType.QRCode)
-                            request.Interaction.ShowQrCode(qrBytes);
+                            request.Interaction.ShowQRCode(qrBytes);
                     },
                     code =>
                     {
@@ -274,7 +276,7 @@ public sealed class LoginWorkflowService
             WeGameLoginAccount                 = oAuthLogin.InputUserID,
             AccountType                        = resolvedLoginState.AccountType,
             AreaName                           = resolvedLoginState.Area.AreaName,
-            UserDefinedName                    = deviceProfileAccount?.UserDefinedName                    ?? null!,
+            UserDefinedName                    = existingAccount?.UserDefinedName ?? deviceProfileAccount?.UserDefinedName ?? null!,
             SdoPassword                        = existingAccount?.SdoPassword                            ?? string.Empty,
             SdoQuickLoginSecret                = existingAccount?.SdoQuickLoginSecret                    ?? string.Empty,
             WeGameQuickLoginSecret             = existingAccount?.WeGameQuickLoginSecret,
@@ -287,6 +289,13 @@ public sealed class LoginWorkflowService
         };
 
         AccountManager.ApplyResolvedDeviceProfile(accountToSave, resolvedDeviceProfile);
+
+        // Reusing another account's device must not replace the scanned account's rotation policy.
+        if (existingAccount != null && pendingQrDeviceProfile != null)
+        {
+            accountToSave.IsDeviceProfileRotation   = existingAccount.IsDeviceProfileRotation;
+            accountToSave.DeviceProfileRotationDays = existingAccount.DeviceProfileRotationDays;
+        }
 
         if (loginQuickLoginEnabled && accountToSave.AccountType == XIVAccountType.Sdo)
         {
