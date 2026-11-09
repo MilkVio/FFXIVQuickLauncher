@@ -8,6 +8,14 @@ public interface ILoginClient
 {
     Task<LoginResult> LoginAsync(LoginType loginType, LoginRequest request, CancellationToken cancellationToken = default);
 
+    Task<LoginResult?> RestoreSessionAsync(
+        LoginType loginType,
+        LoginRequest request,
+        string tgt,
+        string guid,
+        string expectedSndaId,
+        CancellationToken cancellationToken = default);
+
     Task<LoginResult> LoginBySessionKey(
         string account,
         string autoLoginSessionKey,

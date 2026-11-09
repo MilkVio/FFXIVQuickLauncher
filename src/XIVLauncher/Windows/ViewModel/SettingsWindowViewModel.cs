@@ -37,7 +37,7 @@ public sealed partial class SettingsWindowViewModel : ObservableObject
     (
         string value
     ) =>
-        RefreshGamePathWarning();
+        RefreshGamePathWarning(value);
 
     [ObservableProperty]
     public partial string PatchPath { get; set; } = string.Empty;
@@ -53,6 +53,9 @@ public sealed partial class SettingsWindowViewModel : ObservableObject
 
     [ObservableProperty]
     public partial bool KeepPatches { get; set; }
+
+    [ObservableProperty]
+    public partial bool AutoLoginToLastAccount { get; set; }
 
     [ObservableProperty]
     public partial bool RequireDeviceProfileSetupForNewAccountLogin { get; set; }
@@ -113,7 +116,7 @@ public sealed partial class SettingsWindowViewModel : ObservableObject
     (
         CredType value
     ) =>
-        SyncSelectedCredTypeOption();
+        SyncSelectedCredTypeOption(value);
 
     [ObservableProperty]
     public partial CredTypeOptionItem? SelectedCredTypeOption { get; set; }
@@ -267,6 +270,7 @@ public sealed partial class SettingsWindowViewModel : ObservableObject
         AskBeforePatching                           = App.Settings.AskBeforePatchInstall;
         ExitLauncherAfterGameExit                   = App.Settings.ExitLauncherWhenGameExit;
         KeepPatches                                 = App.Settings.KeepPatches;
+        AutoLoginToLastAccount                      = App.Settings.AutoLoginToLastAccount;
         RequireDeviceProfileSetupForNewAccountLogin = App.Settings.RequireDeviceProfileSetupForNewLogin;
         RequireDeviceProfileSetupForQRCodeLogin     = App.Settings.RequireDeviceProfileSetupForQRCodeLogin;
         DeviceProfileDebugEnabled                   = App.Settings.DeviceProfileDebugEnabled;
@@ -283,7 +287,7 @@ public sealed partial class SettingsWindowViewModel : ObservableObject
         SelectedCredType                            = App.AccountManager.CurrentCredType;
 
         ReplaceCompanionAppEntries(App.Settings.CompanionAppList ?? []);
-        RefreshGamePathWarning();
+        RefreshGamePathWarning(GamePath);
         _ = RefreshCredTypeOptionsAsync();
     }
 
@@ -354,6 +358,7 @@ public sealed partial class SettingsWindowViewModel : ObservableObject
                 settings.AskBeforePatchInstall                   = AskBeforePatching;
                 settings.ExitLauncherWhenGameExit                = ExitLauncherAfterGameExit;
                 settings.KeepPatches                             = KeepPatches;
+                settings.AutoLoginToLastAccount                  = AutoLoginToLastAccount;
                 settings.RequireDeviceProfileSetupForNewLogin    = RequireDeviceProfileSetupForNewAccountLogin;
                 settings.RequireDeviceProfileSetupForQRCodeLogin = RequireDeviceProfileSetupForQRCodeLogin;
                 settings.DeviceProfileDebugEnabled               = DeviceProfileDebugEnabled;
@@ -412,12 +417,15 @@ public sealed partial class SettingsWindowViewModel : ObservableObject
         foreach (var option in options)
             CredTypeOptions.Add(option);
 
-        SyncSelectedCredTypeOption();
+        SyncSelectedCredTypeOption(SelectedCredType);
     }
 
-    private void SyncSelectedCredTypeOption()
+    private void SyncSelectedCredTypeOption
+    (
+        CredType credType
+    )
     {
-        var selectedOption = CredTypeOptions.FirstOrDefault(option => option.Value == SelectedCredType);
+        var selectedOption = CredTypeOptions.FirstOrDefault(option => option.Value == credType);
 
         if (!EqualityComparer<CredTypeOptionItem?>.Default.Equals(SelectedCredTypeOption, selectedOption))
             SelectedCredTypeOption = selectedOption;
@@ -450,11 +458,14 @@ public sealed partial class SettingsWindowViewModel : ObservableObject
             CompanionAppEntries.Add(entry);
     }
 
-    private void RefreshGamePathWarning()
+    private void RefreshGamePathWarning
+    (
+        string gamePath
+    )
     {
         try
         {
-            if (!string.IsNullOrWhiteSpace(GamePath) && !GameHelpers.LetChoosePath(GamePath))
+            if (!string.IsNullOrWhiteSpace(gamePath) && !GameHelpers.LetChoosePath(gamePath))
                 GamePathWarningMessage = "请选择游戏根目录，不要直接选到 Game 或 boot 子目录";
             else
                 GamePathWarningMessage = string.Empty;

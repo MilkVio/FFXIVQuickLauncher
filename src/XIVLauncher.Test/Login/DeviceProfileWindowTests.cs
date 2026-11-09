@@ -77,7 +77,7 @@ public sealed class DeviceProfileWindowTests
                 var window = new SettingsWindow(model);
                 ((ListBox)window.FindName("SidebarMenu")).SelectedIndex = 1;
                 Render(window, "settings-device-options.png", 1040, 720);
-                var settingNames = new[] { "RequireDeviceProfileSetupForQRCodeLogin", "DeviceProfileDebugEnabled", "DisableAllDeviceProfileRotation" };
+                var settingNames = new[] { "RequireDeviceProfileSetupForQRCodeLogin", "DeviceProfileDebugEnabled", "DisableAllDeviceProfileRotation", "AutoLoginToLastAccount" };
                 var switches = Descendants((DependencyObject)window.Content).OfType<ToggleButton>()
                     .Where(button => settingNames.Contains(BindingOperations.GetBinding(button, ToggleButton.IsCheckedProperty)?.Path.Path))
                     .ToDictionary(button => BindingOperations.GetBinding(button, ToggleButton.IsCheckedProperty)!.Path.Path);

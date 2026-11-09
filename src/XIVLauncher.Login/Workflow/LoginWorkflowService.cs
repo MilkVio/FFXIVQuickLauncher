@@ -1,5 +1,7 @@
+using System.Text.Json;
 using Serilog;
 using XIVLauncher.Account;
+using XIVLauncher.Account.Cred;
 using XIVLauncher.Account.DeviceProfiles;
 using XIVLauncher.Common.Game;
 using XIVLauncher.Login.Channels;
@@ -21,8 +23,14 @@ public sealed class LoginWorkflowService
     private readonly SavedAccountLoginResolver          savedAccountLoginResolver          = new(accountManager, weGameTokenCaptureCoordinator);
     private readonly NewAccountDeviceProfileCoordinator newAccountDeviceProfileCoordinator = new(accountManager);
 
-    public async Task<LoginWorkflowResult?> ExecuteAsync(LoginWorkflowRequest request)
+    public async Task<LoginWorkflowResult?> ExecuteAsync
+    (
+        LoginWorkflowRequest request
+    )
     {
+        if (request.IsAutomaticLogin)
+            return await RestoreSavedSessionAsync(request).ConfigureAwait(false);
+
         var resolvedLoginState = await savedAccountLoginResolver.ResolveAsync(request);
         if (resolvedLoginState == null)
             return null;
@@ -31,7 +39,7 @@ public sealed class LoginWorkflowService
         if (deviceProfilePreparation == null)
             return null;
 
-        var deviceProfileSnapshot = deviceProfilePreparation.ResolvedDeviceProfile.Snapshot;
+        var         deviceProfileSnapshot = deviceProfilePreparation.ResolvedDeviceProfile.Snapshot;
         LoginResult loginResult;
 
         try
@@ -82,13 +90,11 @@ public sealed class LoginWorkflowService
         var pendingNewAccount     = postQrResult.PendingNewAccount;
         deviceProfileSnapshot = resolvedDeviceProfile.Snapshot;
 
-        if (deviceProfilePreparation.RequiresNewAccountDeviceProfileSetup      &&
-            resolvedLoginState.RequestedLoginType          == LoginType.QRCode &&
-            loginResult.State                              == LoginState.Ok    &&
-            loginResult.OAuthLogin                         != null             &&
+        if (deviceProfilePreparation.RequiresNewAccountDeviceProfileSetup       &&
+            resolvedLoginState.RequestedLoginType == LoginType.QRCode           &&
+            loginResult is { State: LoginState.Ok, OAuthLogin: { } oAuthLogin } &&
             pendingNewAccount?.DeviceProfileDynamicEnabled == true)
         {
-            var oAuthLogin = loginResult.OAuthLogin;
             if (string.IsNullOrWhiteSpace(oAuthLogin.QuickLoginSecret))
                 throw new InvalidOperationException("扫码登录未返回可保存的快速登录凭据");
 
@@ -115,7 +121,6 @@ public sealed class LoginWorkflowService
 
             var accountToSave = await SaveAccountAsync
                                  (
-                                     request,
                                      resolvedLoginState,
                                      resolvedDeviceProfile,
                                      pendingNewAccount,
@@ -130,55 +135,12 @@ public sealed class LoginWorkflowService
                 isAccountPersisted = true;
                 isNewAccount       = !existedBefore;
 
-                switch (accountToSave.AccountType)
-                {
-                    case XIVAccountType.Sdo
-                        when (accountToSave.QuickLoginEnabled                                        &&
-                              loginResult.OAuthLogin?.InputUserID is { Length: > 0 } refreshUsername &&
-                              loginResult.OAuthLogin?.QuickLoginSecret is { Length: > 0 } autoLoginSessionKey):
-                    {
-                        var cachedDeviceProfile = deviceProfileSnapshot;
-                        refreshGameSessionIdByQuickLoginFunc = async () =>
-                        {
-                            ShowDeviceProfileDebugIfNeeded(request, LoginType.QuickLogin, cachedDeviceProfile);
-                            var newLoginResult = await loginClient.LoginBySessionKey
-                                                 (
-                                                     refreshUsername,
-                                                     autoLoginSessionKey,
-                                                     request.LoginSessionRefreshSink,
-                                                     cachedDeviceProfile
-                                                 ).ConfigureAwait(false);
-                            return await ResolveSessionIdFromResultAsync(newLoginResult, cachedDeviceProfile).ConfigureAwait(false);
-                        };
-                        break;
-                    }
-
-                    case XIVAccountType.WeGame
-                        when (accountToSave.QuickLoginEnabled                                    &&
-                              resolvedLoginState.FinalLoginType == LoginType.WeGame              &&
-                              loginResult.OAuthLogin?.InputUserID is { Length: > 0 } inputUserId &&
-                              resolvedLoginState.Secret is { Length: > 0 } weGameToken):
-                    {
-                        var cachedDeviceProfile = deviceProfileSnapshot;
-                        refreshGameSessionIdByQuickLoginFunc = async () =>
-                        {
-                            var newLoginResult = await loginClient.LoginAsync
-                                                 (
-                                                     LoginType.WeGame,
-                                                     new LoginRequest
-                                                     {
-                                                         Account                 = inputUserId,
-                                                         Secret                  = weGameToken,
-                                                         QuickLoginEnabled       = false,
-                                                         DeviceProfile           = cachedDeviceProfile,
-                                                         LoginSessionRefreshSink = request.LoginSessionRefreshSink
-                                                     }
-                                                 ).ConfigureAwait(false);
-                            return await ResolveSessionIdFromResultAsync(newLoginResult, cachedDeviceProfile).ConfigureAwait(false);
-                        };
-                        break;
-                    }
-                }
+                var refreshSecret = accountToSave.AccountType == XIVAccountType.Sdo
+                                        ? loginResult.OAuthLogin?.QuickLoginSecret
+                                        : resolvedLoginState.Secret;
+                if (accountToSave.QuickLoginEnabled && !string.IsNullOrWhiteSpace(refreshSecret))
+                    refreshGameSessionIdByQuickLoginFunc = CreateQuickLoginRefresh(
+                        request, accountToSave.AccountType, accountToSave.UserName, refreshSecret, deviceProfileSnapshot);
             }
         }
 
@@ -247,7 +209,6 @@ public sealed class LoginWorkflowService
 
     private async Task<XIVAccount?> SaveAccountAsync
     (
-        LoginWorkflowRequest  request,
         ResolvedLoginState    resolvedLoginState,
         ResolvedDeviceProfile resolvedDeviceProfile,
         XIVAccount?           pendingNewAccount,
@@ -316,6 +277,21 @@ public sealed class LoginWorkflowService
 
         DeviceProfilePreset? createdDeviceProfilePreset = null;
         accountToSave.GenerateID();
+        if (accountToSave.QuickLoginEnabled &&
+            oAuthLogin is { TGT: { Length: > 0 } tgt, Guid: { Length: > 0 } guid })
+        {
+            var session = new SavedLoginSession
+            {
+                AccountID     = accountToSave.ID,
+                SndaID        = oAuthLogin.SndaID,
+                TGT           = tgt,
+                GUID          = guid,
+                DeviceProfile = deviceProfileSnapshot
+            };
+            // This cache is optional: failure must not discard a successful QR login or its credentials.
+            accountToSave.LoginSessionSecret = await EncryptSessionAsync(session).ConfigureAwait(false);
+        }
+
 
         try
         {
@@ -388,12 +364,139 @@ public sealed class LoginWorkflowService
         return accountToSave;
     }
 
+    private async Task<LoginWorkflowResult?> RestoreSavedSessionAsync(LoginWorkflowRequest request)
+    {
+        if (accountManager.CurrentCredType == CredType.WindowsHello)
+            return null;
+
+        var account = accountManager.FindAccount(request.Username, request.LoginType.ToAccountType());
+        if (account is not { QuickLoginEnabled: true, LoginSessionSecret.Length: > 0 } ||
+            accountManager.HasUnavailableSecrets(account))
+            return null;
+
+        void InvalidateSession()
+        {
+            account.LoginSessionSecret = null;
+            accountManager.Save(account);
+        }
+
+        try
+        {
+            var cancellationToken = request.LoginCancellationTokenSource.Token;
+            cancellationToken.ThrowIfCancellationRequested();
+            var json = await accountManager.Decrypt(account.LoginSessionSecret).ConfigureAwait(false);
+            if (string.IsNullOrWhiteSpace(json))
+            {
+                InvalidateSession();
+                return null;
+            }
+
+            var session = JsonSerializer.Deserialize<SavedLoginSession>(json);
+            var deviceProfile = accountManager.ResolveDeviceProfile(account).Snapshot;
+            if (session == null ||
+                !string.Equals(session.AccountID, account.ID, StringComparison.Ordinal) ||
+                string.IsNullOrWhiteSpace(session.SndaID) ||
+                string.IsNullOrWhiteSpace(session.TGT) ||
+                string.IsNullOrWhiteSpace(session.GUID) ||
+                !deviceProfile.Equals(session.DeviceProfile))
+            {
+                InvalidateSession();
+                return null;
+            }
+
+            ShowDeviceProfileDebugIfNeeded(request, LoginType.QuickLogin, deviceProfile);
+            cancellationToken.ThrowIfCancellationRequested();
+            // Start the network deadline after the optional user-controlled debug dialog.
+            request.LoginCancellationTokenSource.CancelAfter(TimeSpan.FromSeconds(15));
+            var loginResult = await loginClient.RestoreSessionAsync(
+                request.LoginType,
+                new LoginRequest
+                {
+                    Account = account.UserName,
+                    DeviceProfile = deviceProfile,
+                    LoginSessionRefreshSink = request.LoginSessionRefreshSink
+                },
+                session.TGT, session.GUID, session.SndaID, cancellationToken).ConfigureAwait(false);
+            cancellationToken.ThrowIfCancellationRequested();
+            if (loginResult?.OAuthLogin is not { TGT.Length: > 0 } oauth ||
+                !string.Equals(oauth.SndaID, session.SndaID, StringComparison.Ordinal))
+            {
+                InvalidateSession();
+                return null;
+            }
+
+            session = session with { TGT = oauth.TGT };
+            account.LoginSessionSecret = await EncryptSessionAsync(session).ConfigureAwait(false);
+            accountManager.Save(account);
+
+            var encryptedSecret = account.IsWeGame ? account.WeGameQuickLoginSecret : account.SdoQuickLoginSecret;
+            var refreshSecret = await accountManager.Decrypt(encryptedSecret).ConfigureAwait(false);
+            var refresh = string.IsNullOrWhiteSpace(refreshSecret) ? null : CreateQuickLoginRefresh(
+                request, account.AccountType, account.UserName, refreshSecret, deviceProfile);
+
+            Log.Information("[LoginWorkflow] 已恢复账号 {AccountID} 的登录会话", account.ID);
+            return new LoginWorkflowResult
+            {
+                GameLaunchContext = new GameLaunchContext(loginResult, request.CurrentArea, request.LoginAreas, account.AccountType),
+                IsAccountPersisted = true,
+                IsNewAccount = false,
+                RefreshGameSessionIdByQuickLoginFunc = refresh
+            };
+        }
+        catch (Exception ex) when (ex is LoginException or JsonException)
+        {
+            InvalidateSession();
+            throw;
+        }
+        finally
+        {
+            request.LoginCancellationTokenSource.CancelAfter(Timeout.InfiniteTimeSpan);
+            await accountManager.CredProvider.ClearCache().ConfigureAwait(false);
+        }
+    }
+
+    private async Task<string?> EncryptSessionAsync(SavedLoginSession session)
+    {
+        var secret = await accountManager.Encrypt(JsonSerializer.Serialize(session)).ConfigureAwait(false);
+        if (string.IsNullOrWhiteSpace(secret))
+        {
+            Log.Warning("[LoginWorkflow] 无法保存自动恢复会话，下次启动需手动登录");
+            return null;
+        }
+        return secret;
+    }
+
+    private Func<Task<string>> CreateQuickLoginRefresh(
+        LoginWorkflowRequest request,
+        XIVAccountType accountType,
+        string username,
+        string secret,
+        DeviceProfileSnapshot deviceProfile) => async () =>
+    {
+        ShowDeviceProfileDebugIfNeeded(request, LoginType.QuickLogin, deviceProfile);
+        var result = accountType == XIVAccountType.Sdo
+            ? await loginClient.LoginBySessionKey(username, secret, request.LoginSessionRefreshSink, deviceProfile).ConfigureAwait(false)
+            : await loginClient.LoginAsync(LoginType.WeGame, new LoginRequest
+            {
+                Account = username,
+                Secret = secret,
+                QuickLoginEnabled = false,
+                DeviceProfile = deviceProfile,
+                LoginSessionRefreshSink = request.LoginSessionRefreshSink
+            }).ConfigureAwait(false);
+        return await ResolveSessionIdFromResultAsync(result, deviceProfile).ConfigureAwait(false);
+    };
+
     /// <summary>
     ///     从登录结果中解析 session ticket。
     ///     如果 SessionID 为空但 TGT 存在（延迟模式），则通过 TGT 实时获取。
     ///     用于 DC Travel 的 session 刷新回调。
     /// </summary>
-    private static async Task<string> ResolveSessionIdFromResultAsync(LoginResult loginResult, DeviceProfileSnapshot deviceProfile)
+    private static async Task<string> ResolveSessionIdFromResultAsync
+    (
+        LoginResult           loginResult,
+        DeviceProfileSnapshot deviceProfile
+    )
     {
         var oauth = loginResult.OAuthLogin;
         if (oauth == null)

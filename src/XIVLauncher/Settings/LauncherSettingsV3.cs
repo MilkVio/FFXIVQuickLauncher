@@ -1,7 +1,6 @@
 using System.IO;
 using System.Text;
 using System.Text.Json;
-using System.Text.Json.Serialization;
 using Serilog;
 using XIVLauncher.Account;
 using XIVLauncher.Account.Cred;
@@ -39,7 +38,7 @@ public sealed class LauncherSettingsV3 : IAccountSettingsStore
         get;
         set => Set(ref field, value);
     }
-    
+
     /// <summary>
     ///     WeGame 游戏安装路径
     /// </summary>
@@ -98,7 +97,16 @@ public sealed class LauncherSettingsV3 : IAccountSettingsStore
         set => Set(ref field, value);
     } = true;
 
-    public DirectoryInfo? GetGamePath(XIVAccountType accountType) =>
+    public bool AutoLoginToLastAccount
+    {
+        get;
+        set => Set(ref field, value);
+    } = true;
+
+    public DirectoryInfo? GetGamePath
+    (
+        XIVAccountType accountType
+    ) =>
         accountType switch
         {
             XIVAccountType.Sdo    => GamePath,
@@ -160,8 +168,16 @@ public sealed class LauncherSettingsV3 : IAccountSettingsStore
     /// </summary>
     public DalamudLoadMethod DalamudLoadMethod
     {
-        get => field == DalamudLoadMethod.DllInject ? DalamudLoadMethod.EntryPoint : field;
-        set => Set(ref field, value == DalamudLoadMethod.DllInject ? DalamudLoadMethod.EntryPoint : value);
+        get => field == DalamudLoadMethod.DllInject ?
+                   DalamudLoadMethod.EntryPoint :
+                   field;
+        set => Set
+        (
+            ref field,
+            value == DalamudLoadMethod.DllInject ?
+                DalamudLoadMethod.EntryPoint :
+                value
+        );
     } = DalamudLoadMethod.EntryPoint;
 
     /// <summary>
@@ -203,7 +219,7 @@ public sealed class LauncherSettingsV3 : IAccountSettingsStore
         get;
         set
         {
-            value = value.Where(x => !string.IsNullOrEmpty(x.CompanionApp.FilePath)).ToList();
+            value = [.. value.Where(x => !string.IsNullOrEmpty(x.CompanionApp.FilePath))];
             Set(ref field, value);
         }
     } = [];
@@ -430,7 +446,10 @@ public sealed class LauncherSettingsV3 : IAccountSettingsStore
     /// <summary>
     ///     从指定路径加载配置
     /// </summary>
-    public static LauncherSettingsV3 Load(string configPath)
+    public static LauncherSettingsV3 Load
+    (
+        string configPath
+    )
     {
         if (TryLoadSettings(configPath, configPath, out var settings, out var configException))
             return settings;
@@ -462,7 +481,10 @@ public sealed class LauncherSettingsV3 : IAccountSettingsStore
         return CreateDetachedSettings(configPath);
     }
 
-    public void Update(Action<LauncherSettingsV3> updater)
+    public void Update
+    (
+        Action<LauncherSettingsV3> updater
+    )
     {
         ArgumentNullException.ThrowIfNull(updater);
 
@@ -478,10 +500,13 @@ public sealed class LauncherSettingsV3 : IAccountSettingsStore
         {
             batchUpdateDepth--;
 
-            if (batchUpdateDepth == 0 && !isCompleted)
-                hasPendingSave = false;
-            else if (batchUpdateDepth == 0 && hasPendingSave && isCompleted)
-                SaveCore();
+            if (batchUpdateDepth == 0)
+            {
+                if (!isCompleted)
+                    hasPendingSave = false;
+                else if (hasPendingSave)
+                    SaveCore();
+            }
         }
     }
 
@@ -502,13 +527,20 @@ public sealed class LauncherSettingsV3 : IAccountSettingsStore
         SaveCore();
     }
 
-    private void Attach(string path)
+    private void Attach
+    (
+        string path
+    )
     {
         configPath   = path;
         suppressSave = false;
     }
 
-    private bool Set<T>(ref T field, T value)
+    private bool Set<T>
+    (
+        ref T field,
+        T     value
+    )
     {
         if (EqualityComparer<T>.Default.Equals(field, value))
             return false;
@@ -521,14 +553,20 @@ public sealed class LauncherSettingsV3 : IAccountSettingsStore
         return true;
     }
 
-    private static LauncherSettingsV3 CreateDetachedSettings(string configPath)
+    private static LauncherSettingsV3 CreateDetachedSettings
+    (
+        string configPath
+    )
     {
         var settings = new LauncherSettingsV3();
         settings.Attach(configPath);
         return settings;
     }
 
-    private static string GetBackupPath(string configPath) =>
+    private static string GetBackupPath
+    (
+        string configPath
+    ) =>
         configPath + ".bak";
 
     private static bool TryLoadSettings
@@ -579,8 +617,8 @@ public sealed class LauncherSettingsV3 : IAccountSettingsStore
 
     private bool MigrateWeGamePath()
     {
-        if (WeGamePath?.Parent is not { Parent: { } gameRoot } parent ||
-            !string.Equals(parent.Name, "sdo", StringComparison.OrdinalIgnoreCase) ||
+        if (WeGamePath?.Parent is not { Parent: { } gameRoot } parent                       ||
+            !string.Equals(parent.Name,     "sdo",      StringComparison.OrdinalIgnoreCase) ||
             !string.Equals(WeGamePath.Name, "sdologin", StringComparison.OrdinalIgnoreCase))
             return false;
 
@@ -588,7 +626,10 @@ public sealed class LauncherSettingsV3 : IAccountSettingsStore
         return true;
     }
 
-    private static string? MoveBrokenConfig(string configPath)
+    private static string? MoveBrokenConfig
+    (
+        string configPath
+    )
     {
         if (!File.Exists(configPath))
             return null;
@@ -606,7 +647,10 @@ public sealed class LauncherSettingsV3 : IAccountSettingsStore
         }
     }
 
-    private static void TryDeleteTempFile(string tempPath)
+    private static void TryDeleteTempFile
+    (
+        string tempPath
+    )
     {
         try
         {

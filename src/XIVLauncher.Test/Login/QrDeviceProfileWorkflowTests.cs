@@ -12,7 +12,7 @@ using Xunit;
 
 namespace XIVLauncher.Test.Login;
 
-public sealed class QrDeviceProfileWorkflowTests : IDisposable
+public sealed partial class QrDeviceProfileWorkflowTests : IDisposable
 {
     private readonly string directory = Path.Combine(Path.GetTempPath(), "VioletLoginTests", Guid.NewGuid().ToString("N"));
     private readonly LauncherSettingsV3 settings = new();
@@ -96,6 +96,9 @@ public sealed class QrDeviceProfileWorkflowTests : IDisposable
         var stored = reloaded.FindAccount("scanned", XIVAccountType.Sdo)!;
         Assert.Equal(saved.DeviceProfilePresetId, stored.DeviceProfilePresetId);
         Assert.Equal(saved.DeviceProfileDynamicEnabled, stored.DeviceProfileDynamicEnabled);
+        using var session = System.Text.Json.JsonDocument.Parse(stored.LoginSessionSecret!);
+        Assert.Equal(stored.ID, session.RootElement.GetProperty("AccountID").GetString());
+        Assert.Equal(expected.DeviceId, session.RootElement.GetProperty("DeviceProfile").GetProperty("DeviceId").GetString());
     }
 
     [Theory]
@@ -241,6 +244,28 @@ public sealed class QrDeviceProfileWorkflowTests : IDisposable
 
     private sealed class LoginClientStub : ILoginClient
     {
+        public int RestoreCalls { get; private set; }
+        public Exception? RestoreFailure { get; init; }
+        public bool RejectSession { get; init; }
+        public Action<LoginRequest>? OnRestore { get; init; }
+        public Task<LoginResult?> RestoreSessionAsync(LoginType loginType, LoginRequest request, string tgt, string guid, string expectedSndaId, CancellationToken cancellationToken = default)
+        {
+            RestoreCalls++;
+            cancellationToken.ThrowIfCancellationRequested();
+            OnRestore?.Invoke(request);
+            if (RestoreFailure != null) throw RestoreFailure;
+            Requests.Add(request);
+            return Task.FromResult(RejectSession ? null : new LoginResult
+            {
+                State = LoginState.Ok,
+                OAuthLogin = new OAuthLoginResult
+                {
+                    InputUserID = request.Account, SndaID = expectedSndaId, TGT = "renewed-tgt",
+                    Guid = guid, DeviceProfile = request.DeviceProfile, SessionID = "restored-session"
+                }
+            });
+        }
+
         public List<LoginRequest> Requests { get; } = [];
         public Action? BeforeLogin { get; set; }
         public string? Failure { get; init; }
@@ -258,6 +283,8 @@ public sealed class QrDeviceProfileWorkflowTests : IDisposable
                 {
                     InputUserID = "scanned",
                     SndaID = "scanned-id",
+                    TGT = "test-tgt",
+                    Guid = "test-guid",
                     SessionID = "session",
                     QuickLoginSecret = Failure == "missing-secret" ? null : "new quick secret",
                     DeviceProfile = request.DeviceProfile

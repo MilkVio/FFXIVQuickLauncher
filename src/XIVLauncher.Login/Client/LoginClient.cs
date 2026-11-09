@@ -2,6 +2,7 @@ using System.Collections.Frozen;
 using Serilog;
 using XIVLauncher.Account.DeviceProfiles;
 using XIVLauncher.Login.Channels;
+using XIVLauncher.Login.Exceptions;
 using XIVLauncher.Login.Models;
 using XIVLauncher.Login.Workflow;
 
@@ -9,6 +10,33 @@ namespace XIVLauncher.Login.Client;
 
 public sealed class LoginClient : ILoginClient
 {
+    public async Task<LoginResult?> RestoreSessionAsync(
+        LoginType loginType,
+        LoginRequest request,
+        string tgt,
+        string guid,
+        string expectedSndaId,
+        CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var context = new LoginChannelContext(request.DeviceProfile);
+        var response = await context.GetJsonAsync(
+            "fastLogin.json",
+            [$"tgt={Uri.EscapeDataString(tgt)}", $"guid={Uri.EscapeDataString(guid)}"],
+            cancellationToken: cancellationToken).ConfigureAwait(false);
+        if (response.ReturnCode != 0)
+            throw new LoginException(response.ReturnCode, response.Data.FailReason);
+
+        cancellationToken.ThrowIfCancellationRequested();
+        if (!string.Equals(response.Data.SndaID, expectedSndaId, StringComparison.Ordinal) ||
+            string.IsNullOrWhiteSpace(response.Data.Tgt))
+            return null;
+
+        context.BindLoginSessionRefresh(request.LoginSessionRefreshSink, response.Data.Tgt, guid);
+        return LoginChannelContext.BuildOkLoginResult(
+            request.Account, expectedSndaId, null, null, loginType, response.Data.Tgt, guid, request.DeviceProfile);
+    }
+
     public async Task<LoginResult> LoginAsync(LoginType loginType, LoginRequest request, CancellationToken cancellationToken = default)
     {
         var channels = DiscoverChannels(new LoginChannelContext(request.DeviceProfile));
