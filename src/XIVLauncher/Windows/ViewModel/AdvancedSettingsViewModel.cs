@@ -12,13 +12,9 @@ public partial class AdvancedSettingsViewModel : ObservableObject
     [ObservableProperty]
     public partial bool EnableVerboseLog { get; set; }
 
-    [ObservableProperty]
-    public partial bool EnableSkipUpdate { get; set; }
-
     public void Load()
     {
         TreatNonZeroExitCodeAsFailure = App.Settings.TreatNonZeroExitCodeAsFailure;
-        EnableSkipUpdate              = App.Settings.EnableSkipUpdate;
         EnableVerboseLog              = LogInit.LevelSwitch.MinimumLevel == LogEventLevel.Verbose;
     }
 
@@ -28,7 +24,6 @@ public partial class AdvancedSettingsViewModel : ObservableObject
         (settings =>
             {
                 settings.TreatNonZeroExitCodeAsFailure = TreatNonZeroExitCodeAsFailure;
-                settings.EnableSkipUpdate              = EnableSkipUpdate;
                 settings.EnableVerboseLog              = EnableVerboseLog;
             }
         );

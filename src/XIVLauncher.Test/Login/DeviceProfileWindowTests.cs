@@ -13,6 +13,10 @@ using XIVLauncher.Common.Game;
 using XIVLauncher.Settings;
 using XIVLauncher.Startup;
 using XIVLauncher.Windows;
+using XIVLauncher.Windows.Main;
+using XIVLauncher.Update;
+using MaterialDesignThemes.Wpf;
+using MaterialDesignThemes.Wpf.Transitions;
 using XIVLauncher.Windows.ViewModel;
 using Xunit;
 
@@ -93,6 +97,49 @@ public sealed class DeviceProfileWindowTests
                 ((ScrollViewer)((TabItem)window.FindName("TabStart")).Content).ScrollToVerticalOffset(250);
                 Render(window, "settings-device-options-scrolled.png", 1040, 720);
                 window.Close();
+
+                var card = new LoginCardControl();
+                var transitioner = (Transitioner)card.FindName("LoginCardTransitioner");
+                var shortcut = (Button)card.FindName("ProxySettingsButton");
+                var toolbar = (Grid)((StackPanel)shortcut.Parent).Parent;
+                var proxyRequests = 0;
+                var settingsRequests = 0;
+                card.ProxySettingsRequested += (_, _) => proxyRequests++;
+                card.SettingsRequested += (_, _) => settingsRequests++;
+                var cardHost = new Window { Content = card, Background = window.Background };
+                foreach (var page in new[] { 1, 4 })
+                {
+                    transitioner.SelectedIndex = page;
+                    Render(cardHost, $"proxy-shortcut-page-{page}.png", 280, 500);
+                    Assert.Equal(Visibility.Visible, toolbar.Visibility);
+                    Assert.Equal("登录代理设置", shortcut.ToolTip);
+                    Assert.Equal(PackIconKind.Lan, ((PackIcon)shortcut.Content).Kind);
+                    shortcut.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                }
+                Assert.Equal(2, proxyRequests);
+                Assert.Equal(0, settingsRequests);
+                transitioner.SelectedIndex = 2;
+                card.UpdateLayout();
+                Assert.Equal(Visibility.Collapsed, toolbar.Visibility);
+                cardHost.Close();
+
+                var proxyWindow = new ProxyManagerWindow();
+                Render(proxyWindow, "proxy-manager-shortcut-target.png", 960, 640);
+                proxyWindow.Close();
+
+                var failureBuilder = UpdateStartupFlow.CreateFailurePrompt(new LauncherUpdateException(
+                    LauncherUpdateStage.Checking, new System.Net.Http.HttpRequestException("更新服务请求受限", null, System.Net.HttpStatusCode.Forbidden)));
+                var failureWindow = (CustomMessageBox)Activator.CreateInstance(typeof(CustomMessageBox),
+                    System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic,
+                    null, [failureBuilder], null)!;
+                Assert.Equal("继续启动启动器", ((Button)failureWindow.FindName("Button1")).Content);
+                Assert.Equal("退出", ((Button)failureWindow.FindName("Button2")).Content);
+                // Offscreen rendering does not raise Loaded; use the completed animation state.
+                var failureCard = (Card)failureWindow.FindName("WindowAnimationLayer");
+                failureCard.Opacity = 1;
+                failureCard.RenderTransform = Transform.Identity;
+                Render(failureWindow, "update-failure-continue.png", 680, 380);
+                failureWindow.Close();
 
                 var profile = new AccountDeviceProfileWindow(accounts);
                 Render(profile, "shared-device-editor.png", 1000, 740);

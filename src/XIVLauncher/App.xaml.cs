@@ -81,6 +81,9 @@ public partial class App
         StartupEventArgs e
     )
     {
+        // Startup dialogs may be the only windows. Closing one must not end startup.
+        var normalShutdownMode = ShutdownMode;
+        ShutdownMode = ShutdownMode.OnExplicitShutdown;
         try
         {
             orchestrator   = new(Dispatcher);
@@ -90,10 +93,16 @@ public partial class App
             {
                 await orchestrator.RunAsync();
 
+                if (StartupContext.IsStartupCancelled)
+                {
+                    Shutdown();
+                    return;
+                }
                 if (StartupContext.IsRestartingForUpdate)
                     return;
 
                 await OnStartupCompletedAsync();
+                ShutdownMode = normalShutdownMode;
             }
             catch (Exception ex)
             {

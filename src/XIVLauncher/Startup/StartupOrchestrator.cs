@@ -1,4 +1,4 @@
-﻿using System.IO;
+using System.IO;
 using System.Windows;
 using System.Windows.Threading;
 using CommandLine;
@@ -7,7 +7,6 @@ using Serilog.Events;
 using Velopack;
 using XIVLauncher.Account;
 using XIVLauncher.Common.Constant;
-using XIVLauncher.Common.Http;
 using XIVLauncher.Dalamud;
 using XIVLauncher.Settings;
 using XIVLauncher.Support;
@@ -50,9 +49,9 @@ public class StartupOrchestrator
         await CheckUpdatesAsync();
 #endif
 
-        if (context.IsRestartingForUpdate)
+        if (context.IsRestartingForUpdate || context.IsStartupCancelled)
         {
-            Log.Information("检测到启动器即将重启更新，提前结束剩余启动步骤");
+            Log.Information("已退出启动流程，更新重启={Restarting}", context.IsRestartingForUpdate);
             return;
         }
 
@@ -178,70 +177,31 @@ public class StartupOrchestrator
 
     private async Task CheckUpdatesAsync()
     {
-        try
-        {
-            Log.Information("开始检查启动器更新");
-
-            updateWindow = new();
-            updateWindow.Show();
-
-            var              updateMgr       = new UpdateOrchestrator(context.Settings);
-            ChangelogWindow? changelogWindow = null;
-
-            try
+        ChangelogWindow? changelogWindow = null;
+        var result = await UpdateStartupFlow.RunAsync(
+            async () =>
             {
-                changelogWindow = new ChangelogWindow();
-            }
-            catch (Exception ex)
+                Log.Information("开始检查启动器更新");
+                updateWindow = new LoadingDialog();
+                updateWindow.Show();
+                try
+                {
+                    changelogWindow = new ChangelogWindow();
+                }
+                catch (Exception ex)
+                {
+                    Log.Warning(ex, "无法创建更新日志窗口");
+                }
+                return await new UpdateOrchestrator().Run(false, updateWindow, changelogWindow, CloseUpdateWindow);
+            },
+            builder => context.Dispatcher.Invoke(() => builder.WithParentWindow(updateWindow!).Show()),
+            () => context.Dispatcher.Invoke(() =>
             {
-                Log.Error(ex, "无法创建更新日志窗口");
-            }
-
-            var shouldContinueStartup = await updateMgr.Run
-                                        (
-                                            false,
-                                            updateWindow,
-                                            changelogWindow,
-                                            CloseUpdateWindow
-                                        ).ConfigureAwait(false);
-
-            CloseUpdateWindow();
-
-            if (!shouldContinueStartup)
-                context.IsRestartingForUpdate = true;
-        }
-        catch (Exception ex)
-        {
-            HandleUpdateError(ex);
-        }
-    }
-
-    private static void HandleUpdateError(Exception ex)
-    {
-        Log.Error(ex, "执行更新检查失败");
-
-        if (ex.FindHttpRequestException() is { StatusCode: not null } httpRequestException && (int)httpRequestException.StatusCode is 403 or 444 or 522)
-        {
-            MessageBox.Show
-            (
-                $"错误：服务端返回错误代码 {httpRequestException.StatusCode}\n\n{httpRequestException.Message}\n\n{ex}",
-                "XIVLauncher 错误",
-                MessageBoxButton.OK,
-                MessageBoxImage.Error
-            );
-        }
-        else
-        {
-            MessageBox.Show
-            (
-                $"错误：{ex.Message}{Environment.NewLine}XIVLauncher 无法检查更新，请检查网络连接后重试。{Environment.NewLine}{Environment.NewLine}{ex}",
-                "XIVLauncher 错误",
-                MessageBoxButton.OK,
-                MessageBoxImage.Error
-            );
-        }
-
-        Environment.Exit(0);
+                CloseUpdateWindow();
+                changelogWindow?.Close();
+            }));
+        context.IsRestartingForUpdate = result == UpdateStartupResult.Restarting;
+        context.IsStartupCancelled = result == UpdateStartupResult.Exit;
     }
 
     private void CloseUpdateWindow()

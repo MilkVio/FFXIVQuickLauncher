@@ -35,6 +35,8 @@ public partial class LoginCardControl
     /// </summary>
     public event EventHandler? SettingsRequested;
 
+    public event EventHandler? ProxySettingsRequested;
+
     /// <summary>
     ///     请求切换账号 (由账号列表点击触发)
     /// </summary>
@@ -67,6 +69,9 @@ public partial class LoginCardControl
 
     private void SettingsButton_OnClick(object sender, RoutedEventArgs e) =>
         SettingsRequested?.Invoke(this, e);
+
+    private void ProxySettingsButton_OnClick(object sender, RoutedEventArgs e) =>
+        ProxySettingsRequested?.Invoke(this, e);
 
     private void GameMaintenanceButton_OnClick(object sender, RoutedEventArgs e)
     {

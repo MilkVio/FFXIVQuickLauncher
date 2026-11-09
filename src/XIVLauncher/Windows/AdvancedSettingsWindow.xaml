@@ -58,10 +58,6 @@
                                   Margin="0,0,0,12"
                                   ToolTip="开启后会输出更详细的日志，日志文件体积也会明显变大"
                                   IsChecked="{Binding EnableVerboseLog}" />
-                        <CheckBox x:Name="EnableSkipUpdate"
-                                  Content="跳过 XIVLauncher 更新"
-                                  Margin="0,0,0,0"
-                                  IsChecked="{Binding EnableSkipUpdate}" />
                     </StackPanel>
                 </materialDesign:Card>
 

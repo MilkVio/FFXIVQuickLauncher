@@ -130,6 +130,15 @@
                 <StackPanel Grid.Column="1"
                             Orientation="Horizontal"
                             HorizontalAlignment="Left">
+                    <Button x:Name="ProxySettingsButton"
+                            Style="{StaticResource HeaderUtilityButtonStyle}"
+                            ToolTip="登录代理设置"
+                            AutomationProperties.Name="登录代理设置"
+                            Click="ProxySettingsButton_OnClick">
+                        <materialDesign:PackIcon Kind="Lan" Width="20" Height="20"
+                                                 Foreground="{DynamicResource MaterialDesign.Brush.Primary}" />
+                    </Button>
+
                     <Button
                         Style="{StaticResource HeaderUtilityButtonStyle}"
                         ToolTip="手动注入"

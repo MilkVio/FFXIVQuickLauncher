@@ -4,6 +4,7 @@ using Serilog;
 using XIVLauncher.Account;
 using XIVLauncher.Common.Http.Site;
 using XIVLauncher.Login.WeGame;
+using XIVLauncher.Windows.Services;
 using XIVLauncher.Windows.ViewModel.Main;
 using XIVLauncher.Windows.ViewModel.Main.Flows;
 using XIVLauncher.Xaml;
@@ -74,6 +75,7 @@ public partial class MainWindow
         NewsCarousel.BannerClicked             += Model.NewsFlow.OpenBanner;
         NewsList.NewsClicked                   += Model.NewsFlow.OpenNews;
         LoginCard.SettingsRequested            += OnSettingsRequested;
+        LoginCard.ProxySettingsRequested       += (_, _) => new DialogService(this).ShowProxyManager();
         LoginCard.AccountSwitchRequested       += OnAccountSwitchRequested;
         LoginCard.AccountFieldCopyRequested    += OnAccountFieldCopyRequested;
         LoginCard.ClearCurrentAccountRequested += OnClearCurrentAccountRequested;

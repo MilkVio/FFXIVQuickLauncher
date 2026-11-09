@@ -13,5 +13,6 @@ public class StartupContext
     public DalamudService       Dalamud               { get; set; } = null!;
     public Dispatcher           Dispatcher            { get; set; } = null!;
     public bool                 IsRestartingForUpdate { get; set; }
+    public bool                 IsStartupCancelled    { get; set; }
     public CredTypeApplyResult? CredTypeApplyResult   { get; set; }
 }

@@ -424,7 +424,7 @@ public sealed class LauncherSettingsV3 : IAccountSettingsStore
     } = 0;
 
     /// <summary>
-    ///     是否跳过更新检查
+    ///     旧版配置兼容字段；更新失败时始终允许用户选择继续启动。
     /// </summary>
     public bool EnableSkipUpdate
     {
